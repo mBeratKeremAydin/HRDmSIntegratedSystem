@@ -11,7 +11,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 var app = builder.Build();
 
 // Selam ben osman
-//Aleykümselam bende berat
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
