@@ -5,7 +5,6 @@
       "Microsoft.AspNetCore": "Warning"
     }
   },
-  "AllowedHosts": "*",
   "ConnectionStrings": {
     "DefaultConnection": "Server=localhost,1433;Database=HRDmsIntegratedDb;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
   }

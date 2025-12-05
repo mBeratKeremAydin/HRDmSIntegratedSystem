@@ -361,3 +361,18 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Local configuration (keep only sanitized samples in git)
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.*.local.json
+**/appsettings.*.private.json
+**/*.secrets.json
+**/*.env
+!**/appsettings*.json.example
