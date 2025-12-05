@@ -2,7 +2,7 @@ using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using HRDms.Data.Data;
-//berat
+
 namespace HR.Mvc.Controllers
 {
     public class HomeController : Controller
