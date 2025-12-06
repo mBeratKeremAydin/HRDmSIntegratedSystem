@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System;
 using System.Collections.Generic;
 
 namespace HRDms.Data.Models;
@@ -13,7 +14,11 @@ public partial class Department
 
     public int? ManagerId { get; set; }
 
+    public virtual ICollection<DocumentPermission> DocumentPermissions { get; set; } = new List<DocumentPermission>();
+
     public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
+
+    [ValidateNever]
 
     public virtual Location Location { get; set; } = null!;
 

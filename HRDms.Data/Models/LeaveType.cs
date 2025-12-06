@@ -10,4 +10,6 @@ public partial class LeaveType
     public string? TypeName { get; set; }
 
     public int? DaysAllowed { get; set; }
+
+    public virtual ICollection<LeaveRequest> LeaveRequests { get; set; } = new List<LeaveRequest>();
 }

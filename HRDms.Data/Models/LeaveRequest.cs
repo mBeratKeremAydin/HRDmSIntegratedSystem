@@ -20,4 +20,10 @@ public partial class LeaveRequest
     public string Status { get; set; } = null!;
 
     public int? ApprovedByUserId { get; set; }
+
+    public virtual User? ApprovedByUser { get; set; }
+
+    public virtual Employee Employee { get; set; } = null!;
+
+    public virtual LeaveType LeaveType { get; set; } = null!;
 }

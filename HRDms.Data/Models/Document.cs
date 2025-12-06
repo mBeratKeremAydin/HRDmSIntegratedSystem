@@ -20,4 +20,14 @@ public partial class Document
     public string CurrentStatus { get; set; } = null!;
 
     public bool IsActive { get; set; }
+
+    public virtual DocumentCategory Category { get; set; } = null!;
+
+    public virtual ICollection<DocumentPermission> DocumentPermissions { get; set; } = new List<DocumentPermission>();
+
+    public virtual ICollection<DocumentStatusHistory> DocumentStatusHistories { get; set; } = new List<DocumentStatusHistory>();
+
+    public virtual ICollection<DocumentVersion> DocumentVersions { get; set; } = new List<DocumentVersion>();
+
+    public virtual Employee OwnerEmployee { get; set; } = null!;
 }

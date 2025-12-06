@@ -18,4 +18,6 @@ public partial class EmploymentContract
     public string? ContractType { get; set; }
 
     public bool IsActive { get; set; }
+
+    public virtual Employee Employee { get; set; } = null!;
 }

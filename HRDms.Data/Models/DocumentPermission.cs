@@ -14,4 +14,8 @@ public partial class DocumentPermission
     public bool? CanRead { get; set; }
 
     public bool? CanEdit { get; set; }
+
+    public virtual Department Department { get; set; } = null!;
+
+    public virtual Document Document { get; set; } = null!;
 }

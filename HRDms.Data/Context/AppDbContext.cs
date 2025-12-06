@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HRDms.Data.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace HRDms.Data.Data;
+namespace HRDms.Data.Context;
 
 public partial class AppDbContext : DbContext
 {
@@ -60,6 +60,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CheckInTime).HasColumnType("datetime");
             entity.Property(e => e.CheckOutTime).HasColumnType("datetime");
             entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.Attendances)
+                .HasForeignKey(d => d.EmployeeId)
+                .HasConstraintName("FK_Attendances_Employees");
         });
 
         modelBuilder.Entity<Department>(entity =>
@@ -107,6 +111,15 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .IsUnicode(false);
+
+            entity.HasOne(d => d.Category).WithMany(p => p.Documents)
+                .HasForeignKey(d => d.CategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Documents_Categories");
+
+            entity.HasOne(d => d.OwnerEmployee).WithMany(p => p.Documents)
+                .HasForeignKey(d => d.OwnerEmployeeId)
+                .HasConstraintName("FK_Documents_OwnerEmployee");
         });
 
         modelBuilder.Entity<DocumentCategory>(entity =>
@@ -118,6 +131,10 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .IsUnicode(false);
             entity.Property(e => e.ParentCategoryId).HasColumnName("ParentCategoryID");
+
+            entity.HasOne(d => d.ParentCategory).WithMany(p => p.InverseParentCategory)
+                .HasForeignKey(d => d.ParentCategoryId)
+                .HasConstraintName("FK_DocumentCategories_Parent");
         });
 
         modelBuilder.Entity<DocumentPermission>(entity =>
@@ -127,6 +144,14 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PermissionId).HasColumnName("PermissionID");
             entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
             entity.Property(e => e.DocumentId).HasColumnName("DocumentID");
+
+            entity.HasOne(d => d.Department).WithMany(p => p.DocumentPermissions)
+                .HasForeignKey(d => d.DepartmentId)
+                .HasConstraintName("FK_DocumentPermissions_Departments");
+
+            entity.HasOne(d => d.Document).WithMany(p => p.DocumentPermissions)
+                .HasForeignKey(d => d.DocumentId)
+                .HasConstraintName("FK_DocumentPermissions_Documents");
         });
 
         modelBuilder.Entity<DocumentStatusHistory>(entity =>
@@ -142,6 +167,15 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+
+            entity.HasOne(d => d.ChangedByUser).WithMany(p => p.DocumentStatusHistories)
+                .HasForeignKey(d => d.ChangedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_DocumentStatusHistory_ChangedByUser");
+
+            entity.HasOne(d => d.Document).WithMany(p => p.DocumentStatusHistories)
+                .HasForeignKey(d => d.DocumentId)
+                .HasConstraintName("FK_DocumentStatusHistory_Documents");
         });
 
         modelBuilder.Entity<DocumentVersion>(entity =>
@@ -161,6 +195,15 @@ public partial class AppDbContext : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.UploadDate).HasColumnType("datetime");
             entity.Property(e => e.UploadedByUserId).HasColumnName("UploadedByUserID");
+
+            entity.HasOne(d => d.Document).WithMany(p => p.DocumentVersions)
+                .HasForeignKey(d => d.DocumentId)
+                .HasConstraintName("FK_DocumentVersions_Documents");
+
+            entity.HasOne(d => d.UploadedByUser).WithMany(p => p.DocumentVersions)
+                .HasForeignKey(d => d.UploadedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_DocumentVersions_UploadedByUser");
         });
 
         modelBuilder.Entity<Employee>(entity =>
@@ -222,6 +265,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Salary).HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.EmploymentContracts)
+                .HasForeignKey(d => d.EmployeeId)
+                .HasConstraintName("FK_EmploymentContracts_Employees");
         });
 
         modelBuilder.Entity<Job>(entity =>
@@ -251,6 +298,20 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false)
                 .HasDefaultValue("Pending");
+
+            entity.HasOne(d => d.ApprovedByUser).WithMany(p => p.LeaveRequests)
+                .HasForeignKey(d => d.ApprovedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_LeaveRequests_ApprovedByUser");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.LeaveRequests)
+                .HasForeignKey(d => d.EmployeeId)
+                .HasConstraintName("FK_LeaveRequests_Employees");
+
+            entity.HasOne(d => d.LeaveType).WithMany(p => p.LeaveRequests)
+                .HasForeignKey(d => d.LeaveTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_LeaveRequests_LeaveTypes");
         });
 
         modelBuilder.Entity<LeaveType>(entity =>
@@ -284,6 +345,14 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.EmployeeId).HasColumnName("EmployeeID");
             entity.Property(e => e.Notes).HasColumnType("text");
             entity.Property(e => e.ReviewerId).HasColumnName("ReviewerID");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.PerformanceReviewEmployees)
+                .HasForeignKey(d => d.EmployeeId)
+                .HasConstraintName("FK_PerformanceReviews_Employee");
+
+            entity.HasOne(d => d.Reviewer).WithMany(p => p.PerformanceReviewReviewers)
+                .HasForeignKey(d => d.ReviewerId)
+                .HasConstraintName("FK_PerformanceReviews_Reviewer");
         });
 
         modelBuilder.Entity<Role>(entity =>

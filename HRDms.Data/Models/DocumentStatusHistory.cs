@@ -14,4 +14,8 @@ public partial class DocumentStatusHistory
     public int? ChangedByUserId { get; set; }
 
     public DateTime? ChangeDate { get; set; }
+
+    public virtual User? ChangedByUser { get; set; }
+
+    public virtual Document Document { get; set; } = null!;
 }

@@ -20,4 +20,8 @@ public partial class DocumentVersion
     public DateTime? UploadDate { get; set; }
 
     public string? ChangeNote { get; set; }
+
+    public virtual Document Document { get; set; } = null!;
+
+    public virtual User? UploadedByUser { get; set; }
 }
