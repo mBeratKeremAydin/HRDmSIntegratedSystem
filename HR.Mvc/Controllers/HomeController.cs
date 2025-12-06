@@ -1,7 +1,7 @@
 using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
-using HRDms.Data.Data;
+using HRDms.Data.Context;
 
 namespace HR.Mvc.Controllers
 {

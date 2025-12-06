@@ -1,0 +1,501 @@
+﻿@model HRDms.Data.Models.Employee
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dökümanlar - @Model.FirstName @Model.LastName</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container-custom {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            color: #4a5568;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+            .back-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+                color: #4facfe;
+            }
+
+        .header-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @@keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .employee-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .employee-info {
+            flex: 1;
+        }
+
+        .employee-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .employee-details {
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            animation: fadeInUp 0.6s ease;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .document-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.6s ease;
+            border-top: 4px solid;
+            cursor: pointer;
+        }
+
+            .document-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            }
+
+            .document-card.draft {
+                border-color: #fa709a;
+            }
+
+            .document-card.approved {
+                border-color: #38ef7d;
+            }
+
+            .document-card.pending {
+                border-color: #fee140;
+            }
+
+        .document-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .document-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .document-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+            .meta-item i {
+                width: 16px;
+                color: #a0aec0;
+            }
+
+        .badge-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .badge-draft {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+
+        .badge-approved {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .badge-pending {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+
+        .badge-active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .badge-inactive {
+            background: #e2e8f0;
+            color: #718096;
+        }
+
+        .document-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 15px;
+        }
+
+        .category-badge {
+            padding: 5px 12px;
+            background: #f7fafc;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .document-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action-small {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-view {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+            .btn-view:hover {
+                transform: scale(1.1);
+                box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+            }
+
+        .btn-download {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+            .btn-download:hover {
+                transform: scale(1.1);
+                box-shadow: 0 5px 15px rgba(56, 239, 125, 0.4);
+            }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 20px;
+            color: #a0aec0;
+        }
+
+            .empty-state i {
+                font-size: 4rem;
+                margin-bottom: 20px;
+            }
+
+            .empty-state h3 {
+                font-size: 1.5rem;
+                margin-bottom: 10px;
+                color: #718096;
+            }
+
+        @@media (max-width: 768px) {
+            .employee-name {
+                font-size: 1.5rem;
+            }
+
+            .documents-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-custom">
+        <a href="@Url.Action("Index", "HR", new { id = Model.EmployeeId })" class="back-button">
+            <i class="fas fa-arrow-left"></i> Geri Dön
+        </a>
+
+        <div class="header-card">
+            <div class="header-content">
+                <div class="employee-avatar">
+                    @(Model.FirstName?.Substring(0, 1).ToUpper())@(Model.LastName?.Substring(0, 1).ToUpper())
+                </div>
+                <div class="employee-info">
+                    <div class="employee-name">@Model.FirstName @Model.LastName</div>
+                    <div class="employee-details">
+                        <i class="fas fa-id-badge"></i> ID: @Model.EmployeeId &nbsp;|&nbsp;
+                        <i class="fas fa-briefcase"></i> @(Model.Job?.JobTitle ?? "Pozisyon Belirtilmemiş")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @{
+            var documents = Model.Documents?.OrderByDescending(d => d.CreatedDate).ToList() ?? new List<HRDms.Data.Models.Document>();
+            var totalDocs = documents.Count;
+            var activeDocs = documents.Count(d => d.IsActive);
+            var approvedDocs = documents.Count(d => d.CurrentStatus == "Approved");
+            var pendingDocs = documents.Count(d => d.CurrentStatus == "Pending");
+        }
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="stat-value">@totalDocs</div>
+                <div class="stat-label">Toplam Döküman</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-value">@approvedDocs</div>
+                <div class="stat-label">Onaylanmış</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-value">@pendingDocs</div>
+                <div class="stat-label">Beklemede</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <i class="fas fa-toggle-on"></i>
+                </div>
+                <div class="stat-value">@activeDocs</div>
+                <div class="stat-label">Aktif Döküman</div>
+            </div>
+        </div>
+
+        @if (documents.Any())
+        {
+            <div class="documents-grid">
+                @foreach (var doc in documents)
+                {
+                    var statusClass = doc.CurrentStatus == "Approved" ? "approved" : doc.CurrentStatus == "Pending" ? "pending" : "draft";
+                    var statusText = doc.CurrentStatus == "Approved" ? "Onaylandı" : doc.CurrentStatus == "Pending" ? "Bekliyor" : "Taslak";
+                    var statusIcon = doc.CurrentStatus == "Approved" ? "check-circle" : doc.CurrentStatus == "Pending" ? "clock" : "file-alt";
+                    var iconColor = doc.CurrentStatus == "Approved" ? "#38ef7d" : doc.CurrentStatus == "Pending" ? "#fee140" : "#fa709a";
+
+                    <div class="document-card @statusClass">
+                        <div class="document-icon" style="background: linear-gradient(135deg, @iconColor 0%, @iconColor 100%);">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+
+                        <div class="document-title">
+                            @(doc.Title ?? "Başlık Belirtilmemiş")
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(doc.DocumentDescription))
+                        {
+                            <p style="font-size: 0.9rem; color: #718096; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                @doc.DocumentDescription
+                            </p>
+                        }
+
+                        <div class="document-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-calendar-alt"></i>
+                                @doc.CreatedDate.ToString("dd MMM yyyy")
+                            </div>
+
+                            @if (doc.Category != null)
+                            {
+                                <div class="meta-item">
+                                    <i class="fas fa-folder"></i>
+                                    @doc.Category.CategoryName
+                                </div>
+                            }
+
+                            <div class="meta-item">
+                                <i class="fas fa-info-circle"></i>
+                                <span class="badge-status badge-@statusClass">
+                                    <i class="fas fa-@statusIcon"></i> @statusText
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="document-footer">
+                            @if (doc.IsActive)
+                            {
+                                <span class="badge-status badge-active">
+                                    <i class="fas fa-check"></i> Aktif
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge-status badge-inactive">
+                                    <i class="fas fa-times"></i> Pasif
+                                </span>
+                            }
+
+                            <div class="document-actions">
+                                <button class="btn-action-small btn-view" title="Görüntüle">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-action-small btn-download" title="İndir">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>Döküman Bulunamadı</h3>
+                <p>Bu çalışan için henüz döküman bulunmamaktadır.</p>
+            </div>
+        }
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
