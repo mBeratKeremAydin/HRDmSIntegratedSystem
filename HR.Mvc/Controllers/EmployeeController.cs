@@ -12,7 +12,7 @@ namespace HR.Mvc.Controllers
         }
         public IActionResult Index()
         {
-            var emp = _context.Employees.ToList();
+            var emp = _context.Employees.Include(e=>e.Department).ToList();
             return View(emp);
         }
     }
