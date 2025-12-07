@@ -4,8 +4,32 @@
     var userRole = Context.Session.GetString("UserRole");
     var sessionEmployeeId = Context.Session.GetInt32("EmployeeId");
     var isHRorAdmin = userRole == "HR" || userRole == "Admin";
+    var isDeptManager = userRole == "DepartmentManager" || userRole == "DepManager";
     var isSelfView = sessionEmployeeId == Model.EmployeeId;
-    var backUrl = isHRorAdmin ? Url.Action("Index", "HR") : Url.Action("Index", "Employee");
+    
+    // returnUrl parametresini kontrol et
+    var returnUrl = Context.Request.Query["returnUrl"].ToString();
+    
+    // Geri dönüş URL'ini belirle
+    string backUrl;
+    
+    if (!string.IsNullOrEmpty(returnUrl))
+    {
+        // returnUrl varsa oraya dön
+        backUrl = returnUrl;
+    }
+    else if (isHRorAdmin)
+    {
+        backUrl = Url.Action("Index", "HR");
+    }
+    else if (isDeptManager)
+    {
+        backUrl = Url.Action("Index", "Department");
+    }
+    else
+    {
+        backUrl = Url.Action("Index", "Employee");
+    }
 }
 <!DOCTYPE html>
 <html lang="tr">

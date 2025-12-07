@@ -1,6 +1,12 @@
 ﻿@model List<HRDms.Data.Models.Employee>
 @{
     Layout = null;
+    var username = Context.Session.GetString("Username");
+    var userEmail = Context.Session.GetString("UserEmail");
+    var employeeName = Context.Session.GetString("EmployeeName");
+
+    // Gösterilecek ismi belirle (Önce EmployeeName, yoksa Username)
+    var displayName = !string.IsNullOrEmpty(employeeName) ? employeeName : username ?? "Kullanıcı";
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -597,25 +603,54 @@
                 display: none;
             }
         }
+
+        .welcome-section {
+            margin-bottom: 0;
+        }
+
+        .welcome-text {
+            color: #718096;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .welcome-text i {
+            color: #667eea;
+            font-size: 1.2rem;
+        }
+
+        .welcome-text strong {
+            color: #2d3748;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
         <!-- Header -->
         <div class="dashboard-header">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div>
-                    <h1 class="dashboard-title">
-                        <i class="fas fa-users-cog"></i> HR Dashboard
-                    </h1>
-                    <p class="dashboard-subtitle">Çalışan Yönetim Sistemi</p>
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="welcome-section">
+                        <h1 class="dashboard-title">
+                            <i class="fas fa-chart-line"></i> HR Yönetim Paneli
+                        </h1>
+                        <p class="welcome-text">
+                            <i class="fas fa-user-circle"></i> 
+                            Hoş geldiniz, <strong>@displayName</strong>
+                        </p>
+                    </div>
                 </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="@Url.Action("Create", "Employee")" class="action-btn primary">
-                        <i class="fas fa-user-plus"></i> Yeni Çalışan
-                    </a>
-                    <a href="@Url.Action("Logout", "Login")" class="action-btn primary">
-                        <i class="fas fa-user-plus"></i> Çıkış Yap
+                <div class="header-actions">
+                    <button class="btn-action btn-notification" onclick="alert('Bildirimler yakında!')">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <a href="@Url.Action("Logout", "Login")" class="btn-action btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Çıkış Yap
                     </a>
                 </div>
             </div>
@@ -656,7 +691,7 @@
             </div>
 
             <!-- NEW: Pending Leave Requests -->
-            <div class="stat-card danger" onclick="window.location.href='@Url.Action("PendingLeaves", "Leave")'">
+            <div class="stat-card danger" >
                 <div class="stat-icon">
                     <i class="fas fa-hourglass-half"></i>
                 </div>
@@ -665,7 +700,7 @@
             </div>
 
             <!-- NEW: Employees on Leave Today -->
-            <div class="stat-card purple" onclick="window.location.href='@Url.Action("TodayOnLeave", "Leave")'">
+            <div class="stat-card purple">
                 <div class="stat-icon">
                     <i class="fas fa-umbrella-beach"></i>
                 </div>

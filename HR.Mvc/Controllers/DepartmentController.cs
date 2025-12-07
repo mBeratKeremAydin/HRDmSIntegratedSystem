@@ -289,12 +289,15 @@ public class DepartmentController : Controller
             return NotFound();
 
         // DepartmentManager ise sadece kendi departmanının çalışanlarını görebilir
-        var isDeptManager = userRole == "Department Manager";
+        var isDeptManager = userRole == "DepartmentManager" || userRole == "DepManager";
         if (isDeptManager && department.ManagerId != employeeId)
         {
             TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanın çalışanlarını görüntüleyebilirsiniz!";
             return RedirectToAction("Index");
         }
+
+        // Departman ID'sini ViewBag'e ekle
+        ViewBag.DepartmentId = id;
 
         return View(department);
     }

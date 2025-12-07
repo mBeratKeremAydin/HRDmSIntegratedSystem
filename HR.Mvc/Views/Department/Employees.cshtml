@@ -384,7 +384,7 @@
                             </div>
                         </div>
 
-                        <a href="@Url.Action("Details", "Employee", new { id = employee.EmployeeId })" class="btn-view-profile">
+                        <a href="@Url.Action("Details", "Employee", new { id = employee.EmployeeId, returnUrl = Url.Action("Employees", "Department", new { id = ViewBag.DepartmentId }) })" class="btn-view-profile">
                             <i class="fas fa-eye"></i> Profili Görüntüle
                         </a>
                     </div>
