@@ -13,22 +13,49 @@
     // Geri dönüş URL'ini belirle
     string backUrl;
     
-    if (!string.IsNullOrEmpty(returnUrl))
+    // Eğer DepartmentManager kendi profilini görüntülüyorsa → Employee/Index
+    if (isDeptManager && isSelfView)
     {
-        // returnUrl varsa oraya dön
-        backUrl = returnUrl;
+        backUrl = Url.Action("Index", "Employee");
+    }
+    // Eğer DepartmentManager başka birinin profilini görüntülüyorsa → Department/Index
+    else if (isDeptManager && !isSelfView)
+    {
+        backUrl = Url.Action("Index", "Department");
     }
     else if (isHRorAdmin)
     {
         backUrl = Url.Action("Index", "HR");
     }
-    else if (isDeptManager)
-    {
-        backUrl = Url.Action("Index", "Department");
-    }
     else
     {
         backUrl = Url.Action("Index", "Employee");
+    }
+
+    // Helper fonksiyon (güncellenmiş)
+    string GetDefaultBackUrl(bool isHR, bool isDept, bool isSelf)
+    {
+        // Eğer "Departman Hesabıma Git" butonundan geliyorsa
+        var fromDepartment = Context.Request.Query["from"].ToString() == "department";
+        
+        // Eğer kendi profilini görüntülüyorsa ve DepartmentManager ise
+        if (isSelf && isDept)
+        {
+            // Departman sayfasından gelmediyse Employee/Index
+            return fromDepartment ? Url.Action("Index", "Department") : Url.Action("Index", "Employee");
+        }
+        
+        if (isHR)
+        {
+            return Url.Action("Index", "HR");
+        }
+        
+        if (isDept)
+        {
+            return Url.Action("Index", "Department");
+        }
+        
+        return Url.Action("Index", "Employee");
     }
 }
 <!DOCTYPE html>
@@ -591,6 +618,14 @@
                                     <strong>Bilgi:</strong> Kendi profilinizi görüntülüyorsunuz. Düzenleme yetkisi için yöneticinize başvurun.
                                 </div>
                             </div>
+                            
+                            @* DepartmentManager ise Departman butonunu ekle *@
+                            @if (isDeptManager)
+                            {
+                                <a href="@Url.Action("Index", "Department")" class="btn-action" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-top: 10px;">
+                                    <i class="fas fa-building"></i> Departman Hesabıma Git
+                                </a>
+                            }
                         }
                         
                         <button class="btn-action" style="background: white; border: 2px solid #e2e8f0; color: #4a5568;" onclick="window.print()">
@@ -659,77 +694,104 @@
                     İş Bilgileri
                 </h2>
 
-                <div class="info-row">
-                    <div class="info-label">
-                        <i class="fas fa-user-tie"></i> Pozisyon
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-user-tie"></i> Pozisyon
+                        </label>
+                        <div class="info-value">
+                            @(Model.Job?.JobTitle ?? "Belirtilmemiş")
+                        </div>
                     </div>
-                    <div class="info-value">
-                        @(Model.Job?.JobTitle ?? "Belirtilmemiş")
-                    </div>
-                </div>
 
-                <div class="info-row">
-                    <div class="info-label">
-                        <i class="fas fa-building"></i> Departman
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-building"></i> Departman
+                        </label>
+                        <div class="info-value">
+                            @(Model.Department?.DepartmentName ?? "Belirtilmemiş")
+                        </div>
                     </div>
-                    <div class="info-value">
-                        @(Model.Department?.DepartmentName ?? "Belirtilmemiş")
-                    </div>
-                </div>
 
-                <div class="info-row">
-                    <div class="info-label">
-                        <i class="fas fa-calendar-check"></i> İşe Giriş
-                    </div>
-                    <div class="info-value">
-                        @if (Model.HireDate.HasValue)
-                        {
-                            @Model.HireDate.Value.ToString("dd MMMM yyyy")
-
-                            var days = (DateOnly.FromDateTime(DateTime.Now).DayNumber - Model.HireDate.Value.DayNumber);
-                            var years = days / 365;
-                            var months = (days % 365) / 30;
-
-                            <div style="font-size: 0.85rem; color: #718096; margin-top: 5px;">
-                                @if (years > 0)
+                    @* Departman Yöneticisi Bilgisi *@
+                    @if (Model.Department?.Manager != null)
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-user-shield"></i> Departman Yöneticisi
+                            </label>
+                            <div class="info-value">
+                                <div class="manager-badge" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 8px 15px; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-user-tie"></i>
+                                    @Model.Department.Manager.FirstName @Model.Department.Manager.LastName
+                                </div>
+                                @if (!string.IsNullOrEmpty(Model.Department.Manager.Email))
                                 {
-                                    <span>@years yıl @months ay</span>
+                                    <div style="font-size: 0.85rem; color: #718096; margin-top: 8px;">
+                                        <i class="fas fa-envelope"></i>
+                                        <a href="mailto:@Model.Department.Manager.Email" style="color: #667eea; text-decoration: none;">
+                                            @Model.Department.Manager.Email
+                                        </a>
+                                    </div>
                                 }
-                                else if (months > 0)
-                                {
-                                    <span>@months ay</span>
-                                }
-                                else
-                                {
-                                    <span>@days gün</span>
-                                }
-                                <span> (Toplam: @days gün)</span>
                             </div>
-                        }
-                        else
-                        {
-                            <span class="empty">Belirtilmemiş</span>
-                        }
-                    </div>
-                </div>
+                        </div>
+                    }
 
-                <div class="info-row">
-                    <div class="info-label">
-                        <i class="fas fa-toggle-on"></i> Durum
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-calendar-check"></i> İşe Giriş
+                        </label>
+                        <div class="info-value">
+                            @if (Model.HireDate.HasValue)
+                            {
+                                @Model.HireDate.Value.ToString("dd MMMM yyyy")
+
+                                var days = (DateOnly.FromDateTime(DateTime.Now).DayNumber - Model.HireDate.Value.DayNumber);
+                                var years = days / 365;
+                                var months = (days % 365) / 30;
+
+                                <div style="font-size: 0.85rem; color: #718096; margin-top: 5px;">
+                                    @if (years > 0)
+                                    {
+                                        <span>@years yıl @months ay</span>
+                                    }
+                                    else if (months > 0)
+                                    {
+                                        <span>@months ay</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@days gün</span>
+                                    }
+                                    <span> (Toplam: @days gün)</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="empty">Belirtilmemiş</span>
+                            }
+                        </div>
                     </div>
-                    <div class="info-value">
-                        @if (Model.IsActive)
-                        {
-                            <span style="color: #38ef7d; font-weight: 600;">
-                                <i class="fas fa-check-circle"></i> Aktif Çalışan
-                            </span>
-                        }
-                        else
-                        {
-                            <span style="color: #cbd5e0; font-weight: 600;">
-                                <i class="fas fa-times-circle"></i> Pasif Çalışan
-                            </span>
-                        }
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-toggle-on"></i> Durum
+                        </label>
+                        <div class="info-value">
+                            @if (Model.IsActive)
+                            {
+                                <span style="color: #38ef7d; font-weight: 600;">
+                                    <i class="fas fa-check-circle"></i> Aktif Çalışan
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="color: #cbd5e0; font-weight: 600;">
+                                    <i class="fas fa-times-circle"></i> Pasif Çalışan
+                                </span>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
@@ -855,7 +917,7 @@
                                         <div style="font-size: 0.85rem; color: #718096; margin-bottom: 8px; font-weight: 600;">
                                             <i class="fas fa-calendar-plus"></i> Başlangıç Tarihi
                                         </div>
-                                        <div style="font-size: 1.2rem; font-weight: 700; color: #2d3748;">
+                                        <div style="font-size: 1.2rem; font-weight: 700, color: #2d3748;">
                                             @activeContract.StartDate.ToString("dd MMM yyyy")
                                         </div>
                                     </div>
@@ -866,7 +928,7 @@
                                         <div style="font-size: 0.85rem; color: #718096; margin-bottom: 8px; font-weight: 600;">
                                             <i class="fas fa-calendar-minus"></i> Bitiş Tarihi
                                         </div>
-                                        <div style="font-size: 1.2rem; font-weight: 700; color: #2d3748;">
+                                        <div style="font-size: 1.2rem; font-weight: 700, color: #2d3748;">
                                             @if (activeContract.EndDate.HasValue)
                                             {
                                                 @activeContract.EndDate.Value.ToString("dd MMM yyyy")

@@ -4,6 +4,8 @@
     var userRole = Context.Session.GetString("UserRole");
     var isHRorAdmin = userRole == "HR" || userRole == "Admin";
     var backUrl = isHRorAdmin ? Url.Action("Index", "HR") : Url.Action("Index", "Employee");
+    var userRoles = Context.Session.GetString("UserRoles") ?? "";
+    var isDeptManager = userRoles.Contains("DepartmentManager") || userRoles.Contains("DepManager");
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -392,6 +394,19 @@
                         <i class="fas fa-briefcase"></i> @(Model.Job?.JobTitle ?? "Pozisyon Belirtilmemiş")
                     </div>
                 </div>
+            </div>
+
+            <div class="header-actions">
+                @if (isDeptManager)
+                {
+                    <a href="@Url.Action("Index", "Department")" class="btn-action" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <i class="fas fa-building"></i> Departman Hesabım
+                    </a>
+                }
+                
+                <a href="@backUrl" class="btn-action">
+                    <i class="fas fa-arrow-left"></i> Geri Dön
+                </a>
             </div>
         </div>
 

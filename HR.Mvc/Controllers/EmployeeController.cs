@@ -80,6 +80,7 @@ namespace HR.Mvc.Controllers
 
             var emp = _context.Employees
                 .Include(e => e.Department)
+                    .ThenInclude(d => d.Manager)  // Departman yöneticisini dahil et
                 .Include(e => e.Job)
                 .Include(e => e.Manager)
                 .Include(e => e.EmploymentContracts)

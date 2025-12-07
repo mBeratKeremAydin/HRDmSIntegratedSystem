@@ -352,16 +352,24 @@
         <div class="header-card">
             <div class="header-content">
                 <div class="employee-info">
-                    <div class="employee-avatar">
-                        @(Model.FirstName?.Substring(0, 1).ToUpper())@(Model.LastName?.Substring(0, 1).ToUpper())
-                    </div>
-                    <div class="employee-details">
-                        <h2>@Model.FirstName @Model.LastName</h2>
-                        <div class="employee-meta">
-                            <i class="fas fa-building"></i> @(Model.Department?.DepartmentName ?? "N/A") |
-                            <i class="fas fa-briefcase"></i> @(Model.Job?.JobTitle ?? "N/A")
-                        </div>
-                    </div>
+                    <!-- ... mevcut kod ... -->
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    @if (Context.Session.GetString("UserRoles")?.Contains("DepartmentManager") == true ||
+                                        Context.Session.GetString("UserRoles")?.Contains("DepManager") == true)
+                    {
+                        <a href="@Url.Action("Index", "Department")" class="btn-action" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                            <i class="fas fa-building"></i> Departman Hesabım
+                        </a>
+                    }
+
+                    @if (!isHRorAdmin)
+                    {
+                        @* Mevcut Giriş/Çıkış butonları *@
+                    }
+                </div>
+            </div>
                 </div>
 
                 @if (!isHRorAdmin)
