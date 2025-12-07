@@ -15,18 +15,74 @@ namespace HR.Mvc.Controllers
         }
         public IActionResult Index()
         {
+            // Session kontrolü
+            var userId = HttpContext.Session.GetInt32("UserId");
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+            var userRole = HttpContext.Session.GetString("UserRole");
 
+            if (userId == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
 
-            return View();
+            // Employee bilgisini getir
+            var employee = _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Job)
+                .Include(e => e.Manager)
+                .Include(e => e.EmploymentContracts.Where(c => c.IsActive))
+                .Include(e => e.LeaveRequests)
+                    .ThenInclude(l => l.LeaveType)
+                .Include(e => e.Attendances)
+                .Include(e => e.PerformanceReviewEmployees)
+                .Include(e => e.Documents)
+                .FirstOrDefault(e => e.EmployeeId == employeeId);
+
+            if (employee == null)
+            {
+                TempData["ErrorMessage"] = "Çalışan bilgisi bulunamadı!";
+                return RedirectToAction("Index", "Login");
+            }
+
+            // İstatistikler için hesaplamalar
+            ViewBag.TotalLeaveRequests = employee.LeaveRequests.Count;
+            ViewBag.PendingLeaveRequests = employee.LeaveRequests.Count(l => l.Status == "Pending");
+            ViewBag.ApprovedLeaveRequests = employee.LeaveRequests.Count(l => l.Status == "Approved");
+            ViewBag.TotalAttendanceDays = employee.Attendances.Count;
+            ViewBag.TotalDocuments = employee.Documents.Count;
+            ViewBag.PerformanceReviews = employee.PerformanceReviewEmployees.Count;
+
+            // Son izin talebi
+            ViewBag.LastLeaveRequest = employee.LeaveRequests
+                .OrderByDescending(l => l.StartDate)
+                .FirstOrDefault();
+
+            // Bu ay devamsızlık
+            var currentMonth = DateTime.Now.Month;
+            var currentYear = DateTime.Now.Year;
+            ViewBag.CurrentMonthAttendance = employee.Attendances
+                .Count(a => a.Date.HasValue && a.Date.Value.Month == currentMonth && a.Date.Value.Year == currentYear);
+
+            return View(employee);
         }
 
         public IActionResult Details(int id)
         {
+            var userRole = HttpContext.Session.GetString("UserRole");
+            var sessionEmployeeId = HttpContext.Session.GetInt32("EmployeeId");
+
+            // Employee ise sadece kendi profilini görebilir
+            if (userRole == "Employee" && sessionEmployeeId != id)
+            {
+                TempData["ErrorMessage"] = "Başka çalışanların profillerini görüntüleme yetkiniz yok!";
+                return RedirectToAction("Index");
+            }
+
             var emp = _context.Employees
                 .Include(e => e.Department)
                 .Include(e => e.Job)
                 .Include(e => e.Manager)
-                .Include(e => e.EmploymentContracts) // Sözleşmeleri dahil et
+                .Include(e => e.EmploymentContracts)
                 .FirstOrDefault(e => e.EmployeeId == id);
 
             if (emp == null)
@@ -322,15 +378,105 @@ namespace HR.Mvc.Controllers
                 .ToList();
         }
 
+        // Devamsızlık görüntüleme ve ekleme
+        [HttpGet]
         public IActionResult Attendance(int id)
         {
+            var sessionEmployeeId = HttpContext.Session.GetInt32("EmployeeId");
+            var userRole = HttpContext.Session.GetString("UserRole");
+
+            // Employee ise sadece kendi kayıtlarını görebilir
+            if (userRole == "Employee" && sessionEmployeeId != id)
+            {
+                TempData["ErrorMessage"] = "Başka çalışanların devamsızlık kayıtlarını görüntüleme yetkiniz yok!";
+                return RedirectToAction("Index");
+            }
+
             var emp = _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Job)
                 .Include(e => e.Attendances)
                 .FirstOrDefault(e => e.EmployeeId == id);
 
-            if (emp == null) return NotFound();
+            if (emp == null)
+                return NotFound();
 
             return View(emp);
+        }
+
+        // Giriş kaydı ekleme
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CheckIn(int employeeId)
+        {
+            try
+            {
+                var today = DateOnly.FromDateTime(DateTime.Now);
+                
+                // Bugün zaten giriş yapmış mı kontrol et
+                var existingAttendance = _context.Attendances
+                    .FirstOrDefault(a => a.EmployeeId == employeeId && a.Date == today);
+
+                if (existingAttendance != null)
+                {
+                    TempData["ErrorMessage"] = "Bugün için zaten giriş kaydı mevcut!";
+                    return RedirectToAction("Attendance", new { id = employeeId });
+                }
+
+                // Yeni giriş kaydı oluştur
+                var attendance = new Attendance
+                {
+                    EmployeeId = employeeId,
+                    Date = today,
+                    CheckInTime = DateTime.Now,
+                    CheckOutTime = null
+                };
+
+                _context.Attendances.Add(attendance);
+                _context.SaveChanges();
+
+                TempData["SuccessMessage"] = "Giriş kaydı başarıyla oluşturuldu!";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Bir hata oluştu: {ex.Message}";
+            }
+
+            return RedirectToAction("Attendance", new { id = employeeId });
+        }
+
+        // Çıkış kaydı güncelleme
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CheckOut(int attendanceId, int employeeId)
+        {
+            try
+            {
+                var attendance = _context.Attendances.Find(attendanceId);
+
+                if (attendance == null)
+                {
+                    TempData["ErrorMessage"] = "Devamsızlık kaydı bulunamadı!";
+                    return RedirectToAction("Attendance", new { id = employeeId });
+                }
+
+                if (attendance.CheckOutTime != null)
+                {
+                    TempData["ErrorMessage"] = "Bu kayıt için çıkış zaten yapılmış!";
+                    return RedirectToAction("Attendance", new { id = employeeId });
+                }
+
+                attendance.CheckOutTime = DateTime.Now;
+                _context.SaveChanges();
+
+                TempData["SuccessMessage"] = "Çıkış kaydı başarıyla güncellendi!";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Bir hata oluştu: {ex.Message}";
+            }
+
+            return RedirectToAction("Attendance", new { id = employeeId });
         }
 
         public IActionResult Leaves(int id)

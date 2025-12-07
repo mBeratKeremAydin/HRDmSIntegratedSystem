@@ -1,6 +1,11 @@
 ﻿@model HRDms.Data.Models.Employee
 @{
     Layout = null;
+    var userRole = Context.Session.GetString("UserRole");
+    var sessionEmployeeId = Context.Session.GetInt32("EmployeeId");
+    var isHRorAdmin = userRole == "HR" || userRole == "Admin";
+    var isSelfView = sessionEmployeeId == Model.EmployeeId;
+    var backUrl = isHRorAdmin ? Url.Action("Index", "HR") : Url.Action("Index", "Employee");
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -478,9 +483,32 @@
 <body>
     <div class="details-container">
         <!-- Back Button -->
-        <a href="@Url.Action("Index", "Employee")" class="back-button">
+        <a href="@backUrl" class="back-button">
             <i class="fas fa-arrow-left"></i> Geri Dön
         </a>
+
+        <!-- Alert Messages -->
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger" style="border-radius: 20px; padding: 20px; margin-bottom: 25px; animation: slideDown 0.3s ease; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 20px rgba(252, 92, 101, 0.2);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #fc5c65;"></i>
+                <div style="flex: 1;">
+                    <strong>Yetki Hatası!</strong>
+                    <p style="margin: 5px 0 0 0;">@TempData["ErrorMessage"]</p>
+                </div>
+            </div>
+        }
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success" style="border-radius: 20px; padding: 20px; margin-bottom: 25px; animation: slideDown 0.3s ease; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 20px rgba(56, 239, 125, 0.2);">
+                <i class="fas fa-check-circle" style="font-size: 2rem; color: #38ef7d;"></i>
+                <div style="flex: 1;">
+                    <strong>Başarılı!</strong>
+                    <p style="margin: 5px 0 0 0;">@TempData["SuccessMessage"]</p>
+                </div>
+            </div>
+        }
 
         <!-- Profile Card -->
         <div class="profile-card">
@@ -520,12 +548,27 @@
                     </div>
 
                     <div class="action-buttons">
-                        <a href="@Url.Action("Edit", "Employee", new { id = Model.EmployeeId })" class="btn-action btn-edit">
-                            <i class="fas fa-edit"></i> Düzenle
-                        </a>
-                        <button type="button" class="btn-action btn-delete" onclick="confirmDelete(@Model.EmployeeId, '@Model.FirstName @Model.LastName')">
-                            <i class="fas fa-trash"></i> Sil
-                        </button>
+                        @if (isHRorAdmin)
+                        {
+                            <!-- Sadece HR ve Admin görebilir -->
+                            <a href="@Url.Action("Edit", "Employee", new { id = Model.EmployeeId })" class="btn-action btn-edit">
+                                <i class="fas fa-edit"></i> Düzenle
+                            </a>
+                            <button type="button" class="btn-action btn-delete" onclick="confirmDelete(@Model.EmployeeId, '@Model.FirstName @Model.LastName')">
+                                <i class="fas fa-trash"></i> Sil
+                            </button>
+                        }
+                        else if (isSelfView)
+                        {
+                            <!-- Employee kendi profilinde sadece bilgilendirme -->
+                            <div class="alert" style="background: linear-gradient(135deg, #fff3cd 0%, #fff8e1 100%); border-left: 4px solid #ffc107; color: #856404; padding: 15px; border-radius: 12px; margin-bottom: 0; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-info-circle" style="font-size: 1.5rem;"></i>
+                                <div>
+                                    <strong>Bilgi:</strong> Kendi profilinizi görüntülüyorsunuz. Düzenleme yetkisi için yöneticinize başvurun.
+                                </div>
+                            </div>
+                        }
+                        
                         <button class="btn-action" style="background: white; border: 2px solid #e2e8f0; color: #4a5568;" onclick="window.print()">
                             <i class="fas fa-print"></i> Yazdır
                         </button>

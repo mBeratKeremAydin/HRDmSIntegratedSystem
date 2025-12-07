@@ -20,10 +20,7 @@ namespace HR.Mvc.Controllers
             if (HttpContext.Session.GetInt32("UserId") != null)
             {
                 var role = HttpContext.Session.GetString("UserRole");
-                if (role == "HR")
-                    return RedirectToAction("Index", "HR");
-                else if (role == "Employee")
-                    return RedirectToAction("Index", "Employee");
+                return RedirectByRole(role);
             }
 
             return View();
@@ -39,7 +36,7 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Kullanıcıyı bul
+            // Kullanıcıyı bul (Tüm rolleri ile birlikte)
             var user = _context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
@@ -57,44 +54,84 @@ namespace HR.Mvc.Controllers
             HttpContext.Session.SetString("Username", user.Username);
             HttpContext.Session.SetString("UserEmail", user.Email ?? "");
 
-            // Rol kontrolü
-            var userRole = user.UserRoles.FirstOrDefault()?.Role?.RoleName;
+            // Kullanıcının tüm rollerini al
+            var userRoles = user.UserRoles.Select(ur => ur.Role?.RoleName).Where(r => r != null).ToList();
 
-            if (!string.IsNullOrEmpty(userRole))
+            if (!userRoles.Any())
             {
-                HttpContext.Session.SetString("UserRole", userRole);
-
-                // Employee bilgisi varsa
-                if (user.Employee != null)
-                {
-                    HttpContext.Session.SetInt32("EmployeeId", user.Employee.EmployeeId);
-                    HttpContext.Session.SetString("EmployeeName", $"{user.Employee.FirstName} {user.Employee.LastName}");
-                }
-
-                TempData["SuccessMessage"] = $"Hoş geldiniz, {user.Username}!";
-
-                // Role göre yönlendirme
-                if (userRole == "HR" || userRole == "Admin")
-                {
-                    return RedirectToAction("Index", "HR");
-                }
-                else if (userRole == "Employee")
-                {
-                    return RedirectToAction("Index", "Employee");
-                }
+                TempData["ErrorMessage"] = "Kullanıcınıza uygun bir rol tanımlanmamış!";
+                return RedirectToAction("Index");
             }
 
-            // Rol yoksa varsayılan olarak Employee ekranına yönlendir
-            HttpContext.Session.SetString("UserRole", "Employee");
-
+            // Employee bilgisi varsa session'a ekle
             if (user.Employee != null)
             {
                 HttpContext.Session.SetInt32("EmployeeId", user.Employee.EmployeeId);
-                return RedirectToAction("Index", "Employee");
+                HttpContext.Session.SetString("EmployeeName", $"{user.Employee.FirstName} {user.Employee.LastName}");
             }
 
-            TempData["ErrorMessage"] = "Kullanıcınıza uygun bir rol tanımlanmamış!";
-            return RedirectToAction("Index");
+            // Rol önceliği belirle ve yönlendir
+            string primaryRole = DeterminePrimaryRole(userRoles);
+            HttpContext.Session.SetString("UserRole", primaryRole);
+
+            // Tüm rolleri virgülle ayrılmış string olarak kaydet (yetki kontrolü için)
+            HttpContext.Session.SetString("UserRoles", string.Join(",", userRoles));
+
+            TempData["SuccessMessage"] = $"Hoş geldiniz, {user.Username}!";
+
+
+            return RedirectByRole(primaryRole);
+        }
+
+        /// <summary>
+        /// Kullanıcının rollerine göre öncelik sırasına göre ana rolü belirler
+        /// Öncelik: Admin > HR > DepartmentManager > Employee
+        /// </summary>
+        private string DeterminePrimaryRole(List<string> roles)
+        {
+            // Rol öncelik sırası
+            if (roles.Contains("Admin"))
+                return "Admin";
+            
+            if (roles.Contains("HR"))
+                return "HR";
+            
+            if (roles.Contains("Department Manager") && roles.Contains("Employee"))
+                return "DepartmentManager";
+            
+            if (roles.Contains("Employee") && !roles.Contains("Department Manager"))
+                return "Employee";
+
+            // Varsayılan
+            return roles.FirstOrDefault() ?? "Employee";
+        }
+
+        /// <summary>
+        /// Role göre ilgili controller'a yönlendirir
+        /// </summary>
+        private IActionResult RedirectByRole(string role)
+        {
+            return role switch
+            {
+                "Admin" => RedirectToAction("Index", "HR"), // Admin HR ekranını kullanır
+                "HR" => RedirectToAction("Index", "HR"),
+                "DepartmentManager" => RedirectToAction("Index", "Department"), // DepartmentManager kendi ekranına
+                "DepManager" => RedirectToAction("Index", "Department"),
+                "Employee" => RedirectToAction("Index", "Employee"),
+                _ => RedirectToAction("Index", "Employee") // Varsayılan
+            };
+        }
+
+        /// <summary>
+        /// Kullanıcının belirli bir role sahip olup olmadığını kontrol eder
+        /// </summary>
+        public bool HasRole(string roleName)
+        {
+            var userRoles = HttpContext.Session.GetString("UserRoles");
+            if (string.IsNullOrEmpty(userRoles))
+                return false;
+
+            return userRoles.Split(',').Contains(roleName);
         }
 
         public IActionResult Logout()

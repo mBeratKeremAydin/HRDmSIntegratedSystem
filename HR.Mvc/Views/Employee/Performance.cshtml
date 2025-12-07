@@ -1,6 +1,9 @@
 ﻿@model HRDms.Data.Models.Employee
 @{
     Layout = null;
+    var userRole = Context.Session.GetString("UserRole");
+    var isHRorAdmin = userRole == "HR" || userRole == "Admin";
+    var backUrl = isHRorAdmin ? Url.Action("Index", "HR") : Url.Action("Index", "Employee");
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -372,7 +375,8 @@
 </head>
 <body>
     <div class="container-custom">
-        <a href="@Url.Action("Index", "HR", new { id = Model.EmployeeId })" class="back-button">
+        <!-- Geri Dön Butonu (Rol Bazlı) -->
+        <a href="@backUrl" class="back-button" style="background: rgba(255, 255, 255, 0.95); border: none; padding: 12px 24px; border-radius: 12px; color: #4a5568; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px; transition: all 0.3s ease; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);">
             <i class="fas fa-arrow-left"></i> Geri Dön
         </a>
 

@@ -120,5 +120,115 @@ namespace HR.Mvc.Controllers
 
             return View(leave);
         }
+        // İzin Talebi Oluşturma - GET
+        [HttpGet]
+        public IActionResult Create()
+        {
+            // Session kontrolü
+            var userId = HttpContext.Session.GetInt32("UserId");
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+
+            if (userId == null || employeeId == null)
+            {
+                TempData["ErrorMessage"] = "Oturum bilgisi bulunamadı. Lütfen tekrar giriş yapın.";
+                return RedirectToAction("Index", "Login");
+            }
+
+            // Çalışan bilgisini getir
+            var employee = _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Job)
+                .FirstOrDefault(e => e.EmployeeId == employeeId);
+
+            if (employee == null)
+            {
+                TempData["ErrorMessage"] = "Çalışan bilgisi bulunamadı!";
+                return RedirectToAction("Index", "Employee");
+            }
+
+            // İzin türlerini getir
+            ViewBag.LeaveTypes = _context.LeaveTypes
+                .Select(lt => new { lt.LeaveTypeId, lt.TypeName, lt.DaysAllowed })
+                .ToList();
+
+            // Çalışan bilgisini ViewBag'e ekle
+            ViewBag.Employee = employee;
+            ViewBag.EmployeeId = employeeId;
+
+            return View();
+        }
+
+        // İzin Talebi Oluşturma - POST
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(int leaveTypeId, DateOnly startDate, DateOnly endDate, string? reason)
+        {
+            try
+            {
+                // Session kontrolü
+                var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+
+                if (employeeId == null)
+                {
+                    TempData["ErrorMessage"] = "Oturum bilgisi bulunamadı!";
+                    return RedirectToAction("Index", "Login");
+                }
+
+                // Tarih kontrolü
+                if (startDate >= endDate)
+                {
+                    TempData["ErrorMessage"] = "Bitiş tarihi, başlangıç tarihinden sonra olmalıdır!";
+                    ReloadCreateDropdowns(employeeId.Value);
+                    return View();
+                }
+
+                // Geçmiş tarih kontrolü
+                if (startDate < DateOnly.FromDateTime(DateTime.Now))
+                {
+                    TempData["ErrorMessage"] = "Geçmiş tarih için izin talebi oluşturamazsınız!";
+                    ReloadCreateDropdowns(employeeId.Value);
+                    return View();
+                }
+
+                // İzin talebini oluştur
+                var leaveRequest = new LeaveRequest
+                {
+                    EmployeeId = employeeId.Value,
+                    LeaveTypeId = leaveTypeId,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    Reason = reason,
+                    Status = "Pending" // Varsayılan olarak beklemede
+                };
+
+                _context.LeaveRequests.Add(leaveRequest);
+                _context.SaveChanges();
+
+                TempData["SuccessMessage"] = "İzin talebiniz başarıyla oluşturuldu! Onay bekliyor.";
+                return RedirectToAction("Index", "Employee");
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Bir hata oluştu: {ex.Message}";
+                ReloadCreateDropdowns(HttpContext.Session.GetInt32("EmployeeId").Value);
+                return View();
+            }
+        }
+
+        private void ReloadCreateDropdowns(int employeeId)
+        {
+            ViewBag.LeaveTypes = _context.LeaveTypes
+                .Select(lt => new { lt.LeaveTypeId, lt.TypeName, lt.DaysAllowed })
+                .ToList();
+
+            ViewBag.Employee = _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Job)
+                .FirstOrDefault(e => e.EmployeeId == employeeId);
+
+            ViewBag.EmployeeId = employeeId;
+        }
     }
-}
+
+    }
+
