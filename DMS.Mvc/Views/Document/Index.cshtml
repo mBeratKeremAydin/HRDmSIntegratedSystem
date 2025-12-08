@@ -1,0 +1,136 @@
+﻿@model List<HRDms.Data.Models.DocumentListViewModel>
+
+@{
+    Layout = null; // Şimdilik layoutsız
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Doküman Listesi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</head>
+<body class="p-4 bg-light">
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Doküman Takip Sistemi</h2>
+            <div>
+                <span class="badge bg-info text-dark">Hoşgeldin, @Context.Session.GetString("Username")</span>
+                <a href="/Account/Logout" class="btn btn-sm btn-danger ms-2">Çıkış</a>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <h5 class="mb-0">Tüm Dokümanlar</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <form asp-action="Index" method="get">
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="searchString" class="form-control" placeholder="Belge adı ara..." value="@ViewData["CurrentFilter"]">
+                                <button class="btn btn-light text-primary" type="submit">Ara</button>
+                                @if (ViewData["CurrentFilter"] != null)
+                                {
+                                    <a href="/Document/Index" class="btn btn-outline-light">Sıfırla</a>
+                                }
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="/Home/Index" class="btn btn-outline-light btn-sm">Ana Sayfa</a>
+                            <a href="/Document/Create" class="btn btn-light btn-sm text-primary fw-bold"> + Yeni Doküman</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Başlık</th>
+                            <th>Kategori</th>
+                            <th>Sahibi</th>
+                            <th>Tarih</th>
+                            <th>Durum</th>
+                            <th class="text-center">İşlem</th>
+
+                            @if (Context.Session.GetString("IsManager") == "true")
+                            {
+                                <th class="text-center table-danger">Yönetici Paneli</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Count > 0)
+                        {
+                            foreach (var doc in Model)
+                            {
+                                <tr>
+                                    <td>@doc.DocumentID</td>
+                                    <td>@doc.Title</td>
+                                    <td><span class="badge bg-secondary">@doc.CategoryName</span></td>
+                                    <td>@doc.OwnerName</td>
+                                    <td>@doc.CreatedDate.ToShortDateString()</td>
+                                    <td>
+                                        @if (doc.CurrentStatus == "Approved")
+                                        {
+                                            <span class="badge bg-success">Onaylandı</span>
+                                        }
+                                        else if (doc.CurrentStatus == "Pending")
+                                        {
+                                            <span class="badge bg-warning text-dark">Beklemede</span>
+                                        }
+                                        else if (doc.CurrentStatus == "Rejected")
+                                        {
+                                            <span class="badge bg-danger">Reddedildi</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@doc.CurrentStatus</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="/Document/Details/@doc.DocumentID" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i> Detay
+                                        </a>
+                                    </td>
+
+                                    @if (Context.Session.GetString("IsManager") == "true")
+                                    {
+                                        <td class="text-center">
+                                            <form action="/Document/Delete" method="post" onsubmit="return confirm('DİKKAT: Bu belgeyi ve tüm geçmişini kalıcı olarak silmek istediğinize emin misiniz?');">
+                                                <input type="hidden" name="id" value="@doc.DocumentID" />
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="bi bi-trash"></i> Sil
+                                                </button>
+                                            </form>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    <i class="bi bi-folder-x fs-1 d-block mb-2"></i>
+                                    Bu kategoride veya yetki alanınızda görüntülenecek doküman yok.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
