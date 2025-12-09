@@ -17,7 +17,7 @@ public partial class PerformanceReview
 
     public string? Notes { get; set; }
 
-    public virtual Employee Employee { get; set; } = null!;
+    public virtual Employee? Employee { get; set; } = null!;
 
     public virtual Employee? Reviewer { get; set; }
 }

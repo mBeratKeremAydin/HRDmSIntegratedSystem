@@ -19,7 +19,7 @@ public class DepartmentController : Controller
         var userRole = HttpContext.Session.GetString("UserRole");
         var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
-        if (userRole == null || employeeId == null)
+        if (userRole == null)
         {
             return RedirectToAction("Index", "Login");
         }
@@ -61,8 +61,12 @@ public class DepartmentController : Controller
         var userRole = HttpContext.Session.GetString("UserRole");
         var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
-        var dep = _context.Departments.Find(id);
-        if (dep == null) return NotFound();
+        var dep = _context.Departments
+            .Include(d => d.Employees) // departman çalışanlarına erişmek için
+            .FirstOrDefault(d => d.DepartmentId == id);
+
+        if (dep == null)
+            return NotFound();
 
         // DepartmentManager ise sadece kendi departmanını düzenleyebilir
         if ((userRole == "DepartmentManager" || userRole == "DepManager") && dep.ManagerId != employeeId)
@@ -72,18 +76,24 @@ public class DepartmentController : Controller
         }
 
         ViewBag.Locations = new SelectList(_context.Locations, "LocationId", "LocationName", dep.LocationId);
-        
-        // Sadece HR/Admin yönetici seçebilir
+
         var isHRorAdmin = userRole == "HR" || userRole == "Admin";
         ViewBag.CanChangeManager = isHRorAdmin;
-        
+
         if (isHRorAdmin)
         {
-            ViewBag.Managers = new SelectList(_context.Employees.Select(e => new
-            {
-                e.EmployeeId,
-                FullName = e.FirstName + " " + e.LastName
-            }), "EmployeeId", "FullName", dep.ManagerId);
+            // SADECE BU DEPARTMANA AİT ÇALIŞANLAR
+            ViewBag.Managers = new SelectList(
+                _context.Employees
+                    .Where(e => e.DepartmentId == dep.DepartmentId && e.IsActive)
+                    .Select(e => new
+                    {
+                        e.EmployeeId,
+                        FullName = e.FirstName + " " + e.LastName
+                    }),
+                "EmployeeId",
+                "FullName",
+                dep.ManagerId);
         }
 
         return View(dep);
@@ -100,70 +110,102 @@ public class DepartmentController : Controller
         {
             ViewBag.Locations = new SelectList(_context.Locations, "LocationId", "LocationName", model.LocationId);
             ViewBag.CanChangeManager = isHRorAdmin;
-            
             if (isHRorAdmin)
             {
-                ViewBag.Managers = new SelectList(_context.Employees.Select(e => new
-                {
-                    e.EmployeeId,
-                    FullName = e.FirstName + " " + e.LastName
-                }), "EmployeeId", "FullName", model.ManagerId);
+                ViewBag.Managers = new SelectList(
+                    _context.Employees
+                        .Where(e => e.DepartmentId == model.DepartmentId && e.IsActive)
+                        .Select(e => new { e.EmployeeId, FullName = e.FirstName + " " + e.LastName }),
+                    "EmployeeId", "FullName", model.ManagerId);
             }
-            
             return View(model);
         }
 
-        // DB'deki departmanı çek
         var department = _context.Departments
             .FirstOrDefault(d => d.DepartmentId == model.DepartmentId);
 
         if (department == null)
             return NotFound();
 
-        // Departman adı ve lokasyonu herkes güncelleyebilir
         department.DepartmentName = model.DepartmentName;
         department.LocationId = model.LocationId;
 
-        // Yönetici değişikliği sadece HR/Admin yapabilir
         if (isHRorAdmin && model.ManagerId != department.ManagerId)
         {
             var oldManagerId = department.ManagerId;
             var newManagerId = model.ManagerId;
 
-            // Yeni manager'a rol ata
-            var managerEmployee = _context.Employees
-                .FirstOrDefault(e => e.EmployeeId == newManagerId);
-
-            if (managerEmployee != null && managerEmployee.UserId != null)
+            // 1) Yeni manager'a DepartmentManager rolü ver
+            if (newManagerId.HasValue)
             {
-                int depManagerRoleId = _context.Roles
-                    .Where(r => r.RoleName == "DepartmentManager" || r.RoleName == "Department Manager")
-                    .Select(r => r.RoleId)
-                    .FirstOrDefault();
+                var newManagerEmployee = _context.Employees
+                    .FirstOrDefault(e => e.EmployeeId == newManagerId.Value);
 
-                if (depManagerRoleId != 0)
+                if (newManagerEmployee != null && newManagerEmployee.UserId.HasValue)
                 {
-                    int userId = managerEmployee.UserId.Value;
+                    int depManagerRoleId = _context.Roles
+                        .Where(r => r.RoleName == "DepartmentManager" || r.RoleName == "Department Manager")
+                        .Select(r => r.RoleId)
+                        .FirstOrDefault();
 
-                    bool exists = _context.UserRoles
-                        .Any(x => x.UserId == userId && x.RoleId == depManagerRoleId);
-
-                    if (!exists)
+                    if (depManagerRoleId != 0)
                     {
-                        _context.UserRoles.Add(new UserRole
+                        int newUserId = newManagerEmployee.UserId.Value;
+
+                        bool exists = _context.UserRoles
+                            .Any(x => x.UserId == newUserId && x.RoleId == depManagerRoleId);
+
+                        if (!exists)
                         {
-                            UserId = userId,
-                            RoleId = depManagerRoleId,
-                            AssignedDate = DateTime.Now
-                        });
+                            _context.UserRoles.Add(new UserRole
+                            {
+                                UserId = newUserId,
+                                RoleId = depManagerRoleId,
+                                AssignedDate = DateTime.Now
+                            });
+                        }
                     }
                 }
             }
 
-            // Yöneticiyi güncelle
+            // 2) Eski manager'dan rolü gerekirse kaldır
+            if (oldManagerId.HasValue)
+            {
+                var oldManagerEmployee = _context.Employees
+                    .FirstOrDefault(e => e.EmployeeId == oldManagerId.Value);
+
+                if (oldManagerEmployee != null && oldManagerEmployee.UserId.HasValue)
+                {
+                    int depManagerRoleId = _context.Roles
+                        .Where(r => r.RoleName == "DepartmentManager" || r.RoleName == "Department Manager")
+                        .Select(r => r.RoleId)
+                        .FirstOrDefault();
+
+                    if (depManagerRoleId != 0)
+                    {
+                        int oldUserId = oldManagerEmployee.UserId.Value;
+
+                        // Bu kullanıcı halen başka bir departmanın yöneticisi mi?
+                        bool stillManagerSomewhere = _context.Departments
+                            .Any(d => d.ManagerId == oldManagerEmployee.EmployeeId && d.DepartmentId != department.DepartmentId);
+
+                        if (!stillManagerSomewhere)
+                        {
+                            var userRoleToRemove = _context.UserRoles
+                                .FirstOrDefault(ur => ur.UserId == oldUserId && ur.RoleId == depManagerRoleId);
+
+                            if (userRoleToRemove != null)
+                            {
+                                _context.UserRoles.Remove(userRoleToRemove);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3) Departman üzerindeki ManagerId'yi güncelle
             department.ManagerId = model.ManagerId;
         }
-        // DepartmentManager ise yönetici değişikliğini yok say (model'den gelen değeri kullanma)
 
         _context.SaveChanges();
 
@@ -222,47 +264,11 @@ public class DepartmentController : Controller
             return View(model);
         }
 
-        // ================================
-        // 1) Manager seçildiyse rol ekle
-        // ================================
-        if (model.ManagerId.HasValue)
-        {
-            var managerEmployee = _context.Employees
-                .FirstOrDefault(e => e.EmployeeId == model.ManagerId.Value);
+        // YENİ: Departman oluştururken ZORUNLU OLARAK yöneticiyi null yap
+        model.ManagerId = null;
 
-            if (managerEmployee != null && managerEmployee.UserId.HasValue)
-            {
-                // Department Manager rol ID'sini bul
-                int depManagerRoleId = _context.Roles
-                    .Where(r => r.RoleName == "Department Manager")
-                    .Select(r => r.RoleId)
-                    .FirstOrDefault();
+        // ManagerId null olduğu için rol atama kısmını tamamen kaldırıyoruz / atlamış oluyoruz
 
-                if (depManagerRoleId != 0) // rol bulunduysa
-                {
-                    int userId = managerEmployee.UserId.Value;
-
-                    // Bu kullanıcı zaten bu role sahip mi?
-                    bool exists = _context.UserRoles
-                        .Any(x => x.UserId == userId && x.RoleId == depManagerRoleId);
-
-                    if (!exists)
-                    {
-                        _context.UserRoles.Add(new UserRole
-                        {
-                            UserId = userId,
-                            RoleId = depManagerRoleId,
-                            AssignedDate = DateTime.Now
-                        });
-                        // SaveChanges gerekmez, aşağıdaki SaveChanges ile kaydolur
-                    }
-                }
-            }
-        }
-
-        // ================================
-        // 2) Departmanı veritabanına ekle
-        // ================================
         _context.Departments.Add(model);
         _context.SaveChanges();
 

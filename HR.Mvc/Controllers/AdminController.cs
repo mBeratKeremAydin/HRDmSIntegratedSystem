@@ -187,5 +187,52 @@ namespace HR.Mvc.Controllers
 
             return View();
         }
+
+        
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Delete(int id) // id: silinecek UserId (HR/Admin)
+        {
+            var user = _context.Users
+                .Include(u => u.Employee) // varsa bağlı employee
+                .FirstOrDefault(u => u.UserId == id);
+
+            if (user == null)
+                return NotFound();
+
+            // 1) Bu kullanıcının bir Employee kaydı varsa ve o employee manager ise,
+            //    yönettiği tüm çalışanların ManagerId'sini NULL yap
+            if (user.Employee != null)
+            {
+                var managerEmployeeId = user.Employee.EmployeeId;
+
+                var managedEmployees = _context.Employees
+                    .Where(e => e.ManagerId == managerEmployeeId)
+                    .ToList();
+
+                foreach (var emp in managedEmployees)
+                {
+                    emp.ManagerId = null;
+                }
+
+
+                var reviewsReviewed = _context.PerformanceReviews
+                    .Where(r => r.ReviewerId == managerEmployeeId)
+                    .ToList();
+
+                foreach (var review in reviewsReviewed)
+                {
+                    review.ReviewerId = null;
+                }
+
+            }
+
+            // 2) Kullanıcıyı sil
+            _context.Users.Remove(user);
+            _context.SaveChanges();
+
+            return RedirectToAction("Index");
+        }
+
     }
 }

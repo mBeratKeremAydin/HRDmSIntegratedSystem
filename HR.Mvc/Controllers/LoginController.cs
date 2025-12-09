@@ -113,7 +113,7 @@ namespace HR.Mvc.Controllers
         {
             return role switch
             {
-                "Admin" => RedirectToAction("Index", "Admin"), // Admin HR ekranını kullanır
+                "Admin" => RedirectToAction("Index", "Admin"), 
                 "HR" => RedirectToAction("Index", "HR"),
                 "DepartmentManager" => RedirectToAction("Index", "Department"), // DepartmentManager kendi ekranına
                 "DepManager" => RedirectToAction("Index", "Department"),

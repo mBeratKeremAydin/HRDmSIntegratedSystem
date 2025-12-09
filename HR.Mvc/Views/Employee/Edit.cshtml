@@ -389,9 +389,33 @@
                             <label class="form-label">
                                 <i class="fas fa-building"></i> Departman <span class="required">*</span>
                             </label>
-                            <select asp-for="DepartmentId" asp-items="@((List<SelectListItem>)ViewBag.Departments)" class="form-select" required>
-                                <option value="">Departman Seçin</option>
-                            </select>
+                            @{
+                                var isDepartmentManager = ViewBag.IsDepartmentManager as bool? ?? false;
+                            }
+
+                            @if (isDepartmentManager)
+                            {
+                                <select asp-for="DepartmentId"
+                                        asp-items="@((List<SelectListItem>)ViewBag.Departments)"
+                                        class="form-select"
+                                        disabled="disabled">
+                                    <option value="">Departman Seçin</option>
+                                </select>
+                                @Html.HiddenFor(m => m.DepartmentId)
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Bu çalışan bir departman yöneticisi olduğu için departmanı değiştirilemez.
+                                </small>
+                            }
+                            else
+                            {
+                                <select asp-for="DepartmentId"
+                                        asp-items="@((List<SelectListItem>)ViewBag.Departments)"
+                                        class="form-select">
+                                    <option value="">Departman Seçin</option>
+                                </select>
+                            }
+
                             <span asp-validation-for="DepartmentId" class="text-danger"></span>
                         </div>
 

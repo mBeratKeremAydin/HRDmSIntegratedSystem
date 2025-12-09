@@ -105,13 +105,16 @@ namespace HR.Mvc.Controllers
                 .Select(j => new { j.JobId, j.JobTitle })
                 .ToList();
 
-            ViewBag.Managers = _context.Employees
-                .Where(e => e.IsActive)
-                .Select(e => new {
-                    e.EmployeeId,
-                    FullName = e.FirstName + " " + e.LastName
+            ViewBag.Managers = _context.Users
+                .Where(u => u.UserRoles.Any(ur =>
+                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+                .Select(u => new SelectListItem
+                {
+                    Value = u.UserId.ToString(),
+                    Text = u.Username   // İstersen ad-soyad vs. property ekleyip kullan
                 })
                 .ToList();
+
 
             return View();
         }
@@ -120,6 +123,7 @@ namespace HR.Mvc.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create(
+
             Employee employee, 
             bool createUser = false, 
             string? username = null, 
@@ -130,6 +134,15 @@ namespace HR.Mvc.Controllers
             decimal? contractSalary = null,
             string? contractType = null)
         {
+            int hrRoleId = _context.Roles
+.Where(r => r.RoleName == "HR")
+.Select(r => r.RoleId)
+.FirstOrDefault();
+
+            int employeeRoleId = _context.Roles
+                .Where(r => r.RoleName == "Employee")
+                .Select(r => r.RoleId)
+                .FirstOrDefault();
             try
             {
                 // User oluşturma seçeneği seçildiyse
@@ -155,13 +168,46 @@ namespace HR.Mvc.Controllers
                     _context.Users.Add(user);
                     _context.SaveChanges();
 
+
+
                     // Employee'ye User ID'yi ata
                     employee.UserId = user.UserId;
+
+                    //rol ataması
+
+
+
+                    // Employee kaydedildikten SONRA:
+                    var department = _context.Departments
+                        .FirstOrDefault(d => d.DepartmentId == employee.DepartmentId);
+
+                    if (
+                        department.DepartmentName=="HR")
+                    {
+                        _context.UserRoles.Add(new UserRole
+                        {
+                            UserId = user.UserId,
+                            RoleId = hrRoleId,
+                            AssignedDate = DateTime.Now
+                        });
+                    }
+
+
+
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = user.UserId,
+                        RoleId = employeeRoleId,
+                        AssignedDate = DateTime.Now
+                    });
+
                 }
 
                 // Employee kaydet
                 _context.Employees.Add(employee);
                 _context.SaveChanges();
+
+
 
                 // Sözleşme oluşturma seçeneği seçildiyse
                 if (createContract && contractStartDate.HasValue && contractSalary.HasValue)
@@ -201,11 +247,13 @@ namespace HR.Mvc.Controllers
                 .Select(j => new { j.JobId, j.JobTitle })
                 .ToList();
 
-            ViewBag.Managers = _context.Employees
-                .Where(e => e.IsActive)
-                .Select(e => new {
-                    e.EmployeeId,
-                    FullName = e.FirstName + " " + e.LastName
+            ViewBag.Managers = _context.Users
+                .Where(u => u.UserRoles.Any(ur =>
+                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+                .Select(u => new SelectListItem
+                {
+                    Value = u.UserId.ToString(),
+                    Text = u.Username
                 })
                 .ToList();
         }
@@ -235,12 +283,17 @@ namespace HR.Mvc.Controllers
             // 1) Employee'i bul (Sözleşme ile birlikte)
             var emp = _context.Employees
                 .Include(e => e.EmploymentContracts)
+                .Include(e => e.Department)
                 .FirstOrDefault(e => e.EmployeeId == id);
 
             if (emp == null)
                 return NotFound();
+            // Bu employee herhangi bir departmanın yöneticisi mi?
+            bool isDepartmentManager = _context.Departments
+                .Any(d => d.ManagerId == emp.EmployeeId);
 
-            // 2) Dropdown'ları doldur
+            ViewBag.IsDepartmentManager = isDepartmentManager;
+
             ViewBag.Departments = _context.Departments
                 .Select(d => new SelectListItem
                 {
@@ -259,13 +312,15 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
-            ViewBag.Managers = _context.Employees
-                .Where(e => e.EmployeeId != id && e.IsActive)
-                .Select(e => new SelectListItem
+            // Edit için de sadece HR & Admin rollerine sahip kullanıcılar
+            ViewBag.Managers = _context.Users
+                .Where(u => u.UserRoles.Any(ur =>
+                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+                .Select(u => new SelectListItem
                 {
-                    Value = e.EmployeeId.ToString(),
-                    Text = e.FirstName + " " + e.LastName,
-                    Selected = e.EmployeeId == emp.ManagerId
+                    Value = u.UserId.ToString(),
+                    Text = u.Username,
+                    Selected = (emp.ManagerId != null && u.UserId == emp.ManagerId)
                 })
                 .ToList();
 
@@ -316,6 +371,9 @@ namespace HR.Mvc.Controllers
             if (employee == null)
                 return NotFound();
 
+            bool isDepartmentManager = _context.Departments
+                .Any(d => d.ManagerId == employee.EmployeeId);
+
             // Çalışan bilgilerini güncelle
             employee.FirstName = model.FirstName;
             employee.LastName = model.LastName;
@@ -323,10 +381,14 @@ namespace HR.Mvc.Controllers
             employee.PhoneNumber = model.PhoneNumber;
             employee.IdentityNumber = model.IdentityNumber;
             employee.HireDate = model.HireDate;
-            employee.DepartmentId = model.DepartmentId;
             employee.JobId = model.JobId;
             employee.ManagerId = model.ManagerId;
             employee.IsActive = model.IsActive;
+
+            if (!isDepartmentManager)
+            {
+                employee.DepartmentId = model.DepartmentId; 
+            }
 
             // Sözleşme güncellemesi
             if (updateContract && contractId.HasValue && contractStartDate.HasValue && contractSalary.HasValue)
@@ -368,13 +430,14 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
-            ViewBag.Managers = _context.Employees
-                .Where(e => e.EmployeeId != model.EmployeeId && e.IsActive)
-                .Select(e => new SelectListItem
+            ViewBag.Managers = _context.Users
+                .Where(u => u.UserRoles.Any(ur =>
+                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+                .Select(u => new SelectListItem
                 {
-                    Value = e.EmployeeId.ToString(),
-                    Text = e.FirstName + " " + e.LastName,
-                    Selected = e.EmployeeId == model.ManagerId
+                    Value = u.UserId.ToString(),
+                    Text = u.Username,
+                    Selected = (model.ManagerId != null && u.UserId == model.ManagerId)
                 })
                 .ToList();
         }

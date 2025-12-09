@@ -387,7 +387,31 @@
                         <a href="@Url.Action("Details", "Employee", new { id = employee.EmployeeId, returnUrl = Url.Action("Employees", "Department", new { id = ViewBag.DepartmentId }) })" class="btn-view-profile">
                             <i class="fas fa-eye"></i> Profili Görüntüle
                         </a>
-                    </div>
+@* HR.Mvc\Views\Department\Employees.cshtml – butonlar *@
+@* Performansları gör *@
+<a href="@Url.Action(
+         "Index",
+         "PerformanceReviews",
+         new {
+             employeeId = employee.EmployeeId,   // param ismi EMPLOYEEID olacak
+             returnUrl = Url.Action("Employees", "Department", new { id = ViewBag.DepartmentId })
+         })"
+   class="btn-view-profile">
+    <i class="fas fa-eye"></i> Performans Raporları Görüntüle
+</a>
+
+@* Performans ekle *@
+<a href="@Url.Action(
+         "Create",
+         "PerformanceReviews",
+         new {
+             employeeId = employee.EmployeeId,   // yine employeeId
+             returnUrl = Url.Action("Employees", "Department", new { id = ViewBag.DepartmentId })
+         })"
+   class="btn-view-profile">
+    <i class="fas fa-plus-circle"></i> Performans Raporu Oluştur
+</a>
+              </div>
                 }
             </div>
         }

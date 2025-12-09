@@ -425,9 +425,9 @@
                             </label>
                             <select asp-for="ManagerId" class="form-select">
                                 <option value="">Yönetici Seçin (Opsiyonel)</option>
-                                @foreach (var manager in ViewBag.Managers)
+                                @foreach (var manager in (IEnumerable<SelectListItem>)ViewBag.Managers)
                                 {
-                                    <option value="@manager.EmployeeId">@manager.FullName</option>
+                                    <option value="@manager.Value">@manager.Text</option>
                                 }
                             </select>
                             <span asp-validation-for="ManagerId" class="text-danger"></span>
