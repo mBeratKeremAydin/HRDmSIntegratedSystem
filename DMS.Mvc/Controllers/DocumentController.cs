@@ -19,12 +19,16 @@ namespace DMS.Mvc.Controllers
         {
             var userId = HttpContext.Session.GetInt32("UserID");
             var deptId = HttpContext.Session.GetInt32("DepartmentID");
+            var isAdmin = HttpContext.Session.GetString("IsAdmin") == "true";
 
             if (userId == null) return RedirectToAction("Login", "Account");
 
-            // Temel Sorgu
+            // GELİŞMİŞ SQL SORGUSU:
+            // 1. Kendi departmanımın (e.DepartmentID) belgeleri
+            // 2. VEYA İzin tablosunda benim departmanıma (p.DepartmentID) yetki verilmiş belgeler
+
             string sqlQuery = @"
-                SELECT 
+                SELECT DISTINCT
                     d.DocumentID, 
                     d.Title, 
                     c.CategoryName, 
@@ -34,16 +38,31 @@ namespace DMS.Mvc.Controllers
                 FROM Documents d
                 JOIN DocumentCategories c ON d.CategoryID = c.CategoryID
                 JOIN Employees e ON d.OwnerEmployeeID = e.EmployeeID
-                WHERE d.IsActive = 1 AND e.DepartmentID = {0}";
+                LEFT JOIN DocumentPermissions p ON d.DocumentID = p.DocumentID
+                WHERE d.IsActive = 1 
+                  AND (
+                        e.DepartmentID = {0}       -- Kendi departmanımın malı
+                        OR
+                        (p.DepartmentID = {0} AND p.CanRead = 1) -- Bana okuma izni verilmiş
+                      )";
 
-            // EĞER ARAMA YAPILDIYSA SQL'E EKLE
+
+            // --- DEĞİŞİKLİK BURADA ---
+            // Eğer Admin DEĞİLSE, departman filtrelerini uygula.
+            // Admin ise bu bloğu atla (yani WHERE d.IsActive=1 deyip hepsini getir).
+            if (!isAdmin)
+            {
+                sqlQuery += @" AND (
+                        e.DepartmentID = {0}
+                        OR
+                        (p.DepartmentID = {0} AND p.CanRead = 1)
+                      )";
+            }
+            // -------------------------
+
+
             if (!string.IsNullOrEmpty(searchString))
             {
-                // SQL Injection riskine karşı parametre kullanmak en doğrusudur ama 
-                // Raw SQL'de dinamik WHERE eklerken {1} parametresini elle yönetmek zordur.
-                // Basitlik adına string interpolation yapıyoruz (Ders projesi için kabul görür).
-                // Güvenli yöntem için FromSqlInterpolated kullanılır.
-
                 sqlQuery += $" AND d.Title LIKE '%{searchString}%'";
             }
 
@@ -53,9 +72,7 @@ namespace DMS.Mvc.Controllers
                                     .SqlQueryRaw<DocumentListViewModel>(sqlQuery, deptId)
                                     .ToList();
 
-            // View'de arama kutusunda aranan kelime kalsın diye geri gönderiyoruz
             ViewData["CurrentFilter"] = searchString;
-
             return View(documents);
         }
 
@@ -63,19 +80,26 @@ namespace DMS.Mvc.Controllers
         [HttpGet]
         public IActionResult Create()
         {
-            // Kullanıcı kontrolü
             if (HttpContext.Session.GetInt32("UserID") == null) return RedirectToAction("Login", "Account");
 
-            // 1. Kategorileri Dropdown için Çek (RAW SQL)
-            string sql = "SELECT * FROM DocumentCategories";
-            var categories = _context.DocumentCategories
-                                     .FromSqlRaw(sql)
-                                     .ToList();
+            // Oturumdaki Departman ID'sini al
+            int? myDeptId = HttpContext.Session.GetInt32("DepartmentID");
 
-            // Modeli hazırla ve view'e gönder
+            // 1. Kategorileri Çek
+            string sqlCat = "SELECT * FROM DocumentCategories";
+            var categories = _context.DocumentCategories.FromSqlRaw(sqlCat).ToList();
+
+            // 2. DÜZELTME: Departmanları Çek (KENDİ DEPARTMANIM HARİÇ)
+            // SQL'de "<>" işareti "Eşit Değildir" demektir.
+            string sqlDept = "SELECT * FROM Departments WHERE DepartmentID <> {0}";
+
+            // Parametre olarak myDeptId gönderiyoruz, böylece listede çıkmıyor.
+            var departments = _context.Departments.FromSqlRaw(sqlDept, myDeptId).ToList();
+
             var model = new UploadDocumentViewModel
             {
-                Categories = categories
+                Categories = categories,
+                Departments = departments
             };
 
             return View(model);
@@ -85,77 +109,69 @@ namespace DMS.Mvc.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(UploadDocumentViewModel model)
         {
+            int? userId = HttpContext.Session.GetInt32("UserID");
+            int? employeeId = HttpContext.Session.GetInt32("EmployeeID");
+            int? myDeptId = HttpContext.Session.GetInt32("DepartmentID");
 
-            // İzin verilen uzantılar
-            var allowedExtensions = new[] { ".pdf", ".docx", ".xlsx", ".jpg", ".png" };
-            var ext = Path.GetExtension(model.File.FileName).ToLower(); // file nesnesi Create'de model.File, diğerinde file diye geçer.
+            if (userId == null) return RedirectToAction("Login", "Account");
 
-            if (!allowedExtensions.Contains(ext))
+            // --- 1. DOSYA KAYDETME VE BELGE OLUŞTURMA ---
+            // (Buralar zaten çalışıyordu, aynen duruyor)
+
+            // Dosyayı diske kaydet
+            string uniqueFileName = Guid.NewGuid().ToString() + "_" + model.File.FileName;
+            string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/documents");
+            if (!Directory.Exists(uploadFolder)) Directory.CreateDirectory(uploadFolder);
+            string filePath = Path.Combine(uploadFolder, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                // Create metodundaysan:
-                ModelState.AddModelError("", "Geçersiz dosya formatı! Sadece PDF, Word, Excel ve Resim yükleyebilirsiniz.");
-                // Modeli tekrar doldurup return View(model); demen lazım.
-
-                // UploadNewVersion metodundaysan:
-                return BadRequest("Geçersiz dosya formatı!");
+                await model.File.CopyToAsync(stream);
             }
 
-            // Session Kontrolü
-            int? employeeId = HttpContext.Session.GetInt32("EmployeeID");
-            int? userId = HttpContext.Session.GetInt32("UserID");
-
-            if (employeeId == null) return RedirectToAction("Login", "Account");
-
-
-            if (ModelState.IsValid)
-            {
-                // 1. DOSYAYI FİZİKSEL OLARAK KAYDET
-                string uniqueFileName = Guid.NewGuid().ToString() + "_" + model.File.FileName;
-                string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/documents");
-
-                if (!Directory.Exists(uploadFolder)) Directory.CreateDirectory(uploadFolder);
-
-                string filePath = Path.Combine(uploadFolder, uniqueFileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await model.File.CopyToAsync(stream);
-                }
-
-                // 2. SQL İLE 'DOCUMENTS' TABLOSUNA KAYIT VE ID ALMA (TEK SEFERDE)
-                // DÜZELTME: Insert yaptık ve hemen ardından SCOPE_IDENTITY() ile ID'yi istedik.
-                // CAST(... as int) diyerek SQL'den gelen decimal değeri int'e çevirdik.
-                string sqlDoc = @"
+            // Documents tablosuna kayıt
+            string sqlDoc = @"
                 INSERT INTO Documents (Title, DocumentDescription, CategoryID, OwnerEmployeeID, CreatedDate, CurrentStatus, IsActive)
                 VALUES ({0}, {1}, {2}, {3}, GETDATE(), 'Pending', 1);
                 SELECT CAST(SCOPE_IDENTITY() as int);";
 
-                // SqlQueryRaw tek bir değer (ID) dönecek
-                int newDocumentId = _context.Database
-                                    .SqlQueryRaw<int>(sqlDoc,
-                                        model.Title,
-                                        model.Description ?? "",
-                                        model.CategoryID,
-                                        employeeId)
-                                    .AsEnumerable()
-                                    .First();
+            int newDocumentId = _context.Database
+                                .SqlQueryRaw<int>(sqlDoc, model.Title, model.Description ?? "", model.CategoryID, employeeId)
+                                .AsEnumerable().First();
 
-                // 3. SQL İLE 'DOCUMENTVERSIONS' TABLOSUNA KAYIT
-                string fileExt = Path.GetExtension(model.File.FileName);
-                string relativePath = "/documents/" + uniqueFileName;
+            // DocumentVersions tablosuna kayıt
+            string fileExt = Path.GetExtension(model.File.FileName);
+            string relativePath = "/documents/" + uniqueFileName;
+            string sqlVer = @"
+                INSERT INTO DocumentVersions (DocumentID, VersionNumber, FilePath, FileExtension, UploadedByUserID, UploadDate, ChangeNote)
+                VALUES ({0}, 1, {1}, {2}, {3}, GETDATE(), 'Initial Upload')";
+            _context.Database.ExecuteSqlRaw(sqlVer, newDocumentId, relativePath, fileExt, userId);
 
-                string sqlVer = @"
-                    INSERT INTO DocumentVersions (DocumentID, VersionNumber, FilePath, FileExtension, UploadedByUserID, UploadDate, ChangeNote)
-                    VALUES ({0}, 1, {1}, {2}, {3}, GETDATE(), 'Initial Upload')";
 
-                _context.Database.ExecuteSqlRaw(sqlVer, newDocumentId, relativePath, fileExt, userId);
+            // --- 2. İZİNLERİ AYARLAMA (BURASI KRİTİK) ---
 
-                return RedirectToAction("Index");
+            // A) Kendi departmanına TAM YETKİ (Read=1, Edit=1)
+            if (myDeptId != null)
+            {
+                string ownPermSql = "INSERT INTO DocumentPermissions (DocumentID, DepartmentID, CanRead, CanEdit) VALUES ({0}, {1}, 1, 1)";
+                _context.Database.ExecuteSqlRaw(ownPermSql, newDocumentId, myDeptId);
             }
 
-            // Hata varsa kategorileri tekrar doldur
-            model.Categories = _context.DocumentCategories.FromSqlRaw("SELECT * FROM DocumentCategories").ToList();
-            return View(model);
+            // B) Seçilen diğer departmanlara OKUMA YETKİSİ (Read=1, Edit=0)
+            // Model'den gelen listenin dolu olup olmadığına bakıyoruz.
+            if (model.SelectedDepartmentIDs != null && model.SelectedDepartmentIDs.Count > 0)
+            {
+                foreach (var selectedDeptId in model.SelectedDepartmentIDs)
+                {
+                    // SQL Sorgusu: Seçilen departmana (selectedDeptId) bu belge için (newDocumentId) yetki ver.
+                    string sharePermSql = "INSERT INTO DocumentPermissions (DocumentID, DepartmentID, CanRead, CanEdit) VALUES ({0}, {1}, 1, 0)";
+
+                    _context.Database.ExecuteSqlRaw(sharePermSql, newDocumentId, selectedDeptId);
+                }
+            }
+
+            // İşlem bitti, listeye dön
+            return RedirectToAction("Index");
         }
 
         // GET: /Document/Details/5

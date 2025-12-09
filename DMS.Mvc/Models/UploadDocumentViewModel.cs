@@ -9,6 +9,12 @@ namespace HRDms.Data.Models
 
         public string Description { get; set; }
 
+        // YENİ: Kullanıcının seçtiği departman ID'leri (Çoklu Seçim)
+        public List<int> SelectedDepartmentIDs { get; set; } = new List<int>();
+
+        // YENİ: Formda göstermek için tüm departman listesi
+        public List<Department> Departments { get; set; } = new List<Department>();
+
         [Required(ErrorMessage = "Kategori seçmelisiniz.")]
         public int CategoryID { get; set; }
 

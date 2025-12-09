@@ -7,7 +7,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Yeni Doküman Yükle</title>
+    <title>Upload New Document</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light p-5">
@@ -17,26 +17,26 @@
             <div class="col-md-8">
                 <div class="card shadow">
                     <div class="card-header bg-primary text-white">
-                        <h4>Yeni Doküman Yükle</h4>
+                        <h4>Upload New Document</h4>
                     </div>
                     <div class="card-body">
 
                         <form asp-action="Create" method="post" enctype="multipart/form-data">
 
                             <div class="mb-3">
-                                <label class="form-label">Başlık</label>
+                                <label class="form-label">Title</label>
                                 <input type="text" name="Title" class="form-control" required />
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Açıklama</label>
+                                <label class="form-label">Description</label>
                                 <textarea name="Description" class="form-control" rows="3"></textarea>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Kategori</label>
+                                <label class="form-label">Category</label>
                                 <select name="CategoryID" class="form-select" required>
-                                    <option value="">Seçiniz...</option>
+                                    <option value="">Select...</option>
                                     @if (Model.Categories != null)
                                     {
                                         foreach (var cat in Model.Categories)
@@ -48,13 +48,35 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Dosya Seç</label>
+                                <label class="form-label fw-bold">Share with?</label>
+                                <div class="card p-2 bg-light" style="max-height: 150px; overflow-y: auto;">
+                                    <small class="text-muted d-block mb-2 border-bottom pb-1">
+                                        * Your department is automatically fully authorized.
+                                    </small>
+
+                                    @if (Model.Departments != null)
+                                    {
+                                        foreach (var dept in Model.Departments)
+                                        {
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="SelectedDepartmentIDs" value="@dept.DepartmentId" id="dept_@dept.DepartmentId">
+                                                <label class="form-check-label" for="dept_@dept.DepartmentId">
+                                                    @dept.DepartmentName
+                                                </label>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Select File</label>
                                 <input type="file" name="File" class="form-control" accept=".pdf,.docx,.xlsx,.jpg,.png" required />
                             </div>
 
                             <div class="d-flex justify-content-between">
-                                <a href="/Document/Index" class="btn btn-secondary">İptal</a>
-                                <button type="submit" class="btn btn-success">Kaydet ve Yükle</button>
+                                <a href="/Document/Index" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-success">Save and Upload</button>
                             </div>
 
                         </form>

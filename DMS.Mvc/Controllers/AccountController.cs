@@ -37,30 +37,55 @@ namespace DMS.Mvc.Controllers
 
                 if (employee != null)
                 {
-                    // Session Bilgilerini Doldur
+                    // Temel Session Bilgilerini Doldur
                     HttpContext.Session.SetInt32("UserID", user.UserId);
                     HttpContext.Session.SetInt32("EmployeeID", employee.EmployeeId);
                     HttpContext.Session.SetInt32("DepartmentID", employee.DepartmentId);
                     HttpContext.Session.SetString("Username", user.Username);
 
-                    // --- YENİ EKLENEN KISIM: YÖNETİCİ Mİ? ---
-                    // Departments tablosunda bu personel ManagerID olarak geçiyor mu?
-                    string managerCheckSql = "SELECT COUNT(*) as Value FROM Departments WHERE ManagerID = {0}";
+                    // --- YENİ BÖLÜM: YETKİ KONTROLÜ (ADMIN ve MANAGER) ---
 
-                    int managerCount = _context.Database
-                        .SqlQueryRaw<int>(managerCheckSql, employee.EmployeeId)
-                        .AsEnumerable()
-                        .FirstOrDefault();
+                    // A) Önce Rolüne Bakalım (Admin mi?)
+                    string roleSql = @"
+                        SELECT r.RoleName 
+                        FROM Roles r 
+                        JOIN UserRoles ur ON r.RoleID = ur.RoleID 
+                        WHERE ur.UserID = {0}";
 
-                    if (managerCount > 0)
+                    var roleName = _context.Database
+                                           .SqlQueryRaw<string>(roleSql, user.UserId)
+                                           .AsEnumerable()
+                                           .FirstOrDefault();
+
+                    if (roleName == "Admin")
                     {
+                        // EĞER ADMIN İSE: Hem Admin hem Manager yetkisi ver (God Mode)
+                        HttpContext.Session.SetString("IsAdmin", "true");
                         HttpContext.Session.SetString("IsManager", "true");
                     }
                     else
                     {
-                        HttpContext.Session.SetString("IsManager", "false");
+                        // EĞER ADMIN DEĞİLSE:
+                        HttpContext.Session.SetString("IsAdmin", "false");
+
+                        // B) O zaman Departman Yöneticisi mi diye bakalım (Eski Kod)
+                        string managerCheckSql = "SELECT COUNT(*) as Value FROM Departments WHERE ManagerID = {0}";
+
+                        int managerCount = _context.Database
+                            .SqlQueryRaw<int>(managerCheckSql, employee.EmployeeId)
+                            .AsEnumerable()
+                            .FirstOrDefault();
+
+                        if (managerCount > 0)
+                        {
+                            HttpContext.Session.SetString("IsManager", "true");
+                        }
+                        else
+                        {
+                            HttpContext.Session.SetString("IsManager", "false");
+                        }
                     }
-                    // --- YENİ KISIM BİTİŞ ---
+                    // --- YETKİ KONTROLÜ BİTİŞ ---
 
                     return RedirectToAction("Index", "Home");
                 }
