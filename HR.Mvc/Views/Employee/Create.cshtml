@@ -450,47 +450,39 @@
                         <div class="section-icon">
                             <i class="fas fa-user-lock"></i>
                         </div>
-                        <h3 class="section-title">Kullanıcı Hesabı</h3>
+                        <h3 class="section-title">Kullanıcı Hesabı <span class="required">*</span></h3>
                     </div>
 
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="createUserCheck" name="createUser" value="true">
-                        <label class="form-check-label" for="createUserCheck">
-                            <i class="fas fa-user-plus text-primary me-1"></i> Bu çalışan için kullanıcı hesabı oluştur
-                        </label>
+                    <div class="alert alert-info" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Her çalışan için kullanıcı hesabı zorunludur. Kullanıcı adı ve şifre belirleyin.
                     </div>
 
-                    <div class="user-section" id="userSection">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Kullanıcı hesabı oluşturulduğunda, çalışan sisteme giriş yapabilecektir.
-                                </div>
-                            </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-user-circle"></i> Kullanıcı Adı <span class="required">*</span>
+                            </label>
+                            <input type="text" name="username" id="username" class="form-control" placeholder="Kullanıcı adı" required />
+                        </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">
-                                    <i class="fas fa-user-circle"></i> Kullanıcı Adı <span class="required">*</span>
-                                </label>
-                                <input type="text" name="username" id="username" class="form-control" placeholder="Kullanıcı adı" />
-                            </div>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-lock"></i> Şifre <span class="required">*</span>
+                            </label>
+                            <input type="password" name="userPassword" id="userPassword" class="form-control" placeholder="Güçlü bir şifre" required />
+                        </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">
-                                    <i class="fas fa-lock"></i> Şifre <span class="required">*</span>
-                                </label>
-                                <input type="password" name="userPassword" id="userPassword" class="form-control" placeholder="Güçlü bir şifre" />
-                            </div>
-
-                            <div class="col-12">
-                                <small class="text-muted">
-                                    <i class="fas fa-shield-alt me-1"></i>
-                                    E-posta adresi otomatik olarak kullanıcı hesabına atanacaktır.
-                                </small>
-                            </div>
+                        <div class="col-12">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                E-posta adresi otomatik olarak kullanıcı hesabına atanacaktır.
+                            </small>
                         </div>
                     </div>
+
+                    <!-- Hidden field: createUser her zaman true -->
+                    <input type="hidden" name="createUser" value="true" />
                 </div>
 
                 <!-- Employment Contract Section -->
@@ -647,7 +639,7 @@
         const usernameInput = document.getElementById('username');
 
         function suggestUsername() {
-            if (document.getElementById('createUserCheck').checked && firstNameInput.value && lastNameInput.value) {
+            if (firstNameInput.value && lastNameInput.value) {
                 const firstName = firstNameInput.value.toLowerCase()
                     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
                     .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
@@ -666,28 +658,23 @@
 
         // Form validation
         document.querySelector('form').addEventListener('submit', function(e) {
-            const createUser = document.getElementById('createUserCheck').checked;
-            const createContract = document.getElementById('createContractCheck').checked;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('userPassword').value;
 
-            // User validation
-            if (createUser) {
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('userPassword').value;
-
-                if (!username || !password) {
-                    e.preventDefault();
-                    alert('Kullanıcı hesabı oluşturmak için kullanıcı adı ve şifre gereklidir!');
-                    return false;
-                }
-
-                if (password.length < 6) {
-                    e.preventDefault();
-                    alert('Şifre en az 6 karakter olmalıdır!');
-                    return false;
-                }
+            if (!username || !password) {
+                e.preventDefault();
+                alert('Kullanıcı adı ve şifre zorunludur!');
+                return false;
             }
 
-            // Contract validation
+            if (password.length < 6) {
+                e.preventDefault();
+                alert('Şifre en az 6 karakter olmalıdır!');
+                return false;
+            }
+
+            // Contract validation (varsa)
+            const createContract = document.getElementById('createContractCheck')?.checked;
             if (createContract) {
                 const startDate = document.getElementById('contractStartDate').value;
                 const salary = document.getElementById('contractSalary').value;
@@ -704,7 +691,6 @@
                     return false;
                 }
 
-                // Bitiş tarihi kontrolü
                 const endDate = document.getElementById('contractEndDate').value;
                 if (endDate && endDate <= startDate) {
                     e.preventDefault();

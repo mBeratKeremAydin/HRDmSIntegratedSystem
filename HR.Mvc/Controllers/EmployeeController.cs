@@ -123,10 +123,9 @@ namespace HR.Mvc.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create(
-
-            Employee employee, 
-            bool createUser = false, 
-            string? username = null, 
+            Employee employee,
+            bool createUser = false,
+            string? username = null,
             string? userPassword = null,
             bool createContract = false,
             DateOnly? contractStartDate = null,
@@ -134,6 +133,7 @@ namespace HR.Mvc.Controllers
             decimal? contractSalary = null,
             string? contractType = null)
         {
+            // Rol id'leri
             int hrRoleId = _context.Roles
                 .Where(r => r.RoleName == "HR")
                 .Select(r => r.RoleId)
@@ -143,73 +143,69 @@ namespace HR.Mvc.Controllers
                 .Where(r => r.RoleName == "Employee")
                 .Select(r => r.RoleId)
                 .FirstOrDefault();
+
             try
             {
-                // User oluşturma seçeneği seçildiyse
-                if (createUser && !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(userPassword))
+                // ZORUNLU: User oluşturulmalı
+                if (!createUser || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(userPassword))
                 {
-                    // Kullanıcı adı kontrolü
-                    if (_context.Users.Any(u => u.Username == username))
-                    {
-                        ModelState.AddModelError("Username", "Bu kullanıcı adı zaten kullanılıyor.");
-                        ReloadDropdowns();
-                        return View(employee);
-                    }
+                    ModelState.AddModelError("", "Her çalışan için kullanıcı hesabı oluşturulmalıdır!");
+                    ReloadDropdowns();
+                    return View(employee);
+                }
 
-                    // User oluştur
-                    var user = new User
-                    {
-                        Username = username,
-                        UserPassword = userPassword, // Gerçek uygulamada hash'lenmeli!
-                        Email = employee.Email,
-                        IsActive = employee.IsActive
-                    };
+                // Kullanıcı adı kontrolü
+                if (_context.Users.Any(u => u.Username == username))
+                {
+                    ModelState.AddModelError("Username", "Bu kullanıcı adı zaten kullanılıyor.");
+                    ReloadDropdowns();
+                    return View(employee);
+                }
 
-                    _context.Users.Add(user);
-                    _context.SaveChanges();
+                // User oluştur
+                var user = new User
+                {
+                    Username = username,
+                    UserPassword = userPassword,
+                    Email = employee.Email,
+                    IsActive = employee.IsActive
+                };
 
+                _context.Users.Add(user);
+                _context.SaveChanges();
 
+                // Employee'ye User ID'yi ata
+                employee.UserId = user.UserId;
 
-                    // Employee'ye User ID'yi ata
-                    employee.UserId = user.UserId;
+                // Departman kontrolü ve rol ataması
+                var department = _context.Departments
+                    .FirstOrDefault(d => d.DepartmentId == employee.DepartmentId);
 
-                    //rol ataması
-
-
-
-                    // Employee kaydedildikten SONRA:
-                    var department = _context.Departments
-                        .FirstOrDefault(d => d.DepartmentId == employee.DepartmentId);
-
-                    if (
-                        department.DepartmentName=="HR")
-                    {
-                        _context.UserRoles.Add(new UserRole
-                        {
-                            UserId = user.UserId,
-                            RoleId = hrRoleId,
-                            AssignedDate = DateTime.Now
-                        });
-                    }
-
-
-
+                if (department != null &&
+                    !string.IsNullOrEmpty(department.DepartmentName) &&
+                    department.DepartmentName.Equals("HR", StringComparison.OrdinalIgnoreCase))
+                {
                     _context.UserRoles.Add(new UserRole
                     {
                         UserId = user.UserId,
-                        RoleId = employeeRoleId,
+                        RoleId = hrRoleId,
                         AssignedDate = DateTime.Now
                     });
-
                 }
+
+                // Her çalışana Employee rolü
+                _context.UserRoles.Add(new UserRole
+                {
+                    UserId = user.UserId,
+                    RoleId = employeeRoleId,
+                    AssignedDate = DateTime.Now
+                });
 
                 // Employee kaydet
                 _context.Employees.Add(employee);
                 _context.SaveChanges();
 
-
-
-                // Sözleşme oluşturma seçeneği seçildiyse
+                // Sözleşme oluşturma
                 if (createContract && contractStartDate.HasValue && contractSalary.HasValue)
                 {
                     var contract = new EmploymentContract
