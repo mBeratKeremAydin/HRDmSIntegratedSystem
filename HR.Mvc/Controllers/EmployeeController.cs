@@ -135,9 +135,9 @@ namespace HR.Mvc.Controllers
             string? contractType = null)
         {
             int hrRoleId = _context.Roles
-.Where(r => r.RoleName == "HR")
-.Select(r => r.RoleId)
-.FirstOrDefault();
+                .Where(r => r.RoleName == "HR")
+                .Select(r => r.RoleId)
+                .FirstOrDefault();
 
             int employeeRoleId = _context.Roles
                 .Where(r => r.RoleName == "Employee")
@@ -260,6 +260,16 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Delete(int id)
         {
+            var userId = HttpContext.Session.GetInt32("UserId");
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+            var userRole = HttpContext.Session.GetString("UserRole");
+
+            if (id == employeeId || userId==id)
+            {
+                TempData["ErrorMessage"] = "Kendi profilinizi silemezsiniz!";
+                return RedirectToAction("Index", "HR");
+            }
+
             var emp = _context.Employees.FirstOrDefault(e => e.EmployeeId == id);
 
             // 1) Manager ise, astların ManagerID'sini NULL yap
@@ -272,6 +282,14 @@ namespace HR.Mvc.Controllers
             foreach (var r in reviewsReviewed)
                 r.ReviewerId = null;
 
+
+            //user kaydınıda sil
+            if (emp.UserId != null)
+            {
+                var user = _context.Users.FirstOrDefault(u => u.UserId == emp.UserId);
+                _context.Users.Remove(user);
+            }
+
             _context.Employees.Remove(emp);
             _context.SaveChanges();
             return RedirectToAction("Index","HR");
@@ -280,6 +298,15 @@ namespace HR.Mvc.Controllers
         [HttpGet]
         public IActionResult Edit(int id)
         {
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+            var userId = HttpContext.Session.GetInt32("UserId");
+
+            if (id == employeeId || userId == id)
+            {
+                TempData["ErrorMessage"] = "Kendi profilinizi Güncelleyemezsiniz!";
+                return RedirectToAction("Index", "HR");
+            }
+
             // 1) Employee'i bul (Sözleşme ile birlikte)
             var emp = _context.Employees
                 .Include(e => e.EmploymentContracts)
