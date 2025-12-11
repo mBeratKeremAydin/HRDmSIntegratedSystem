@@ -15,7 +15,7 @@ namespace HR.Mvc.Controllers
             _context = context;
         }
 
-        // Ana Dashboard
+        // Ana Dashboard – TAMAMEN SQL
         public IActionResult Index()
         {
             var userRole = HttpContext.Session.GetString("UserRole");
@@ -25,24 +25,33 @@ namespace HR.Mvc.Controllers
                 TempData["ErrorMessage"] = "Bu sayfaya erişim yetkiniz yok!";
                 return RedirectToAction("Index", "Login");
             }
-                    
-            // İstatistikler
-            ViewBag.TotalEmployees = _context.Employees.Count();
-            ViewBag.TotalHREmployees = _context.Employees
-                .Include(e => e.Department)
-                .Count(e => e.Department.DepartmentName == "HR");
-            ViewBag.TotalJobs = _context.Jobs.Count();
-            ViewBag.TotalLeaveTypes = _context.LeaveTypes.Count();
-            ViewBag.TotalLocations = _context.Locations.Count();
-            ViewBag.TotalRoles = _context.Roles.Count();
-            ViewBag.TotalDepartments = _context.Departments.Count();
+
+            string sqlTotalEmployees = "SELECT COUNT(*) AS Value FROM Employees";
+            string sqlHREmployees = @"
+                SELECT COUNT(*) AS Value
+                FROM Employees e
+                JOIN Departments d ON e.DepartmentID = d.DepartmentID
+                WHERE d.DepartmentName = 'HR'";
+            string sqlTotalJobs = "SELECT COUNT(*) AS Value FROM Jobs";
+            string sqlTotalLeaveTypes = "SELECT COUNT(*) AS Value FROM LeaveTypes";
+            string sqlTotalLocations = "SELECT COUNT(*) AS Value FROM Locations";
+            string sqlTotalRoles = "SELECT COUNT(*) AS Value FROM Roles";
+            string sqlTotalDepartments = "SELECT COUNT(*) AS Value FROM Departments";
+
+            ViewBag.TotalEmployees = _context.Database.SqlQueryRaw<int>(sqlTotalEmployees).AsEnumerable().FirstOrDefault();
+            ViewBag.TotalHREmployees = _context.Database.SqlQueryRaw<int>(sqlHREmployees).AsEnumerable().FirstOrDefault();
+            ViewBag.TotalJobs = _context.Database.SqlQueryRaw<int>(sqlTotalJobs).AsEnumerable().FirstOrDefault();
+            ViewBag.TotalLeaveTypes = _context.Database.SqlQueryRaw<int>(sqlTotalLeaveTypes).AsEnumerable().FirstOrDefault();
+            ViewBag.TotalLocations = _context.Database.SqlQueryRaw<int>(sqlTotalLocations).AsEnumerable().FirstOrDefault();
+            ViewBag.TotalRoles = _context.Database.SqlQueryRaw<int>(sqlTotalRoles).AsEnumerable().FirstOrDefault();
+            ViewBag.TotalDepartments = _context.Database.SqlQueryRaw<int>(sqlTotalDepartments).AsEnumerable().FirstOrDefault();
 
             return View();
         }
 
         #region HR Employee Management
 
-        // HR Çalışanları Listele
+        // HR Çalışanları Listele – SQL
         public IActionResult HREmployees()
         {
             var userRole = HttpContext.Session.GetString("UserRole");
@@ -52,8 +61,11 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
+            const string sqlFindHR = "SELECT * FROM Departments WHERE DepartmentName = 'HR'";
             var hrDepartment = _context.Departments
-                .FirstOrDefault(d => d.DepartmentName == "HR");
+                .FromSqlRaw(sqlFindHR)
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (hrDepartment == null)
             {
@@ -61,17 +73,18 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index");
             }
 
+            const string sqlHREmployees = "SELECT * FROM Employees WHERE DepartmentID = {0}";
             var hrEmployees = _context.Employees
+                .FromSqlRaw(sqlHREmployees, hrDepartment.DepartmentId)
                 .Include(e => e.Job)
                 .Include(e => e.User)
                 .Include(e => e.Department)
-                .Where(e => e.DepartmentId == hrDepartment.DepartmentId)
                 .ToList();
 
             return View(hrEmployees);
         }
 
-        // HR Çalışan Ekleme - GET
+        // HR Çalışan Ekleme - GET – SQL
         [HttpGet]
         public IActionResult CreateHREmployee()
         {
@@ -82,9 +95,11 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // HR Departmanını bul
+            const string sqlFindHR = "SELECT * FROM Departments WHERE DepartmentName = 'HR'";
             var hrDepartment = _context.Departments
-                .FirstOrDefault(d => d.DepartmentName == "HR");
+                .FromSqlRaw(sqlFindHR)
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (hrDepartment == null)
             {
@@ -95,12 +110,14 @@ namespace HR.Mvc.Controllers
             ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
             ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
 
-            ViewBag.Jobs = new SelectList(_context.Jobs, "JobId", "JobTitle");
+            const string sqlJobs = "SELECT * FROM Jobs";
+            var jobs = _context.Jobs.FromSqlRaw(sqlJobs).ToList();
+            ViewBag.Jobs = new SelectList(jobs, "JobId", "JobTitle");
 
             return View();
         }
 
-        // HR Çalışan Ekleme - POST
+        // HR Çalışan Ekleme - POST – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult CreateHREmployee(Employee employee, string username, string userPassword)
@@ -112,9 +129,11 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // HR Departmanını bul
+            const string sqlFindHR = "SELECT * FROM Departments WHERE DepartmentName = 'HR'";
             var hrDepartment = _context.Departments
-                .FirstOrDefault(d => d.DepartmentName == "HR");
+                .FromSqlRaw(sqlFindHR)
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (hrDepartment == null)
             {
@@ -122,10 +141,9 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index");
             }
 
-            // DepartmentId'yi zorla HR yap
             employee.DepartmentId = hrDepartment.DepartmentId;
 
-            // Navigation property'leri temizle
+            // Navigation temizle
             ModelState.Remove("Department");
             ModelState.Remove("Job");
             ModelState.Remove("Manager");
@@ -142,91 +160,109 @@ namespace HR.Mvc.Controllers
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(userPassword))
             {
                 ModelState.AddModelError("", "Kullanıcı adı ve şifre zorunludur!");
-                ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
-                ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
-                ViewBag.Jobs = new SelectList(_context.Jobs, "JobId", "JobTitle", employee.JobId);
+                LoadJobsForHrCreate(employee.JobId, hrDepartment);
                 return View(employee);
             }
 
-            if (_context.Users.Any(u => u.Username == username))
+            // Username kontrolü – SQL
+            const string sqlCheckUsername = "SELECT COUNT(*) AS Value FROM Users WHERE Username = {0}";
+            var usernameExists = _context.Database
+                .SqlQueryRaw<int>(sqlCheckUsername, username)
+                .AsEnumerable()
+                .FirstOrDefault();
+
+            if (usernameExists > 0)
             {
                 ModelState.AddModelError("", "Bu kullanıcı adı zaten kullanılıyor!");
-                ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
-                ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
-                ViewBag.Jobs = new SelectList(_context.Jobs, "JobId", "JobTitle", employee.JobId);
+                LoadJobsForHrCreate(employee.JobId, hrDepartment);
                 return View(employee);
             }
 
-            // ✅ EMAIL KONTROLÜ EKLE
-            if (!string.IsNullOrEmpty(employee.Email) && _context.Users.Any(u => u.Email == employee.Email))
+            // Email kontrolü – SQL
+            if (!string.IsNullOrEmpty(employee.Email))
             {
-                ModelState.AddModelError("", "Bu email adresi zaten kullanılıyor!");
-                ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
-                ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
-                ViewBag.Jobs = new SelectList(_context.Jobs, "JobId", "JobTitle", employee.JobId);
-                return View(employee);
+                const string sqlCheckEmail = "SELECT COUNT(*) AS Value FROM Users WHERE Email = {0}";
+                var emailExists = _context.Database
+                    .SqlQueryRaw<int>(sqlCheckEmail, employee.Email)
+                    .AsEnumerable()
+                    .FirstOrDefault();
+
+                if (emailExists > 0)
+                {
+                    ModelState.AddModelError("", "Bu email adresi zaten kullanılıyor!");
+                    LoadJobsForHrCreate(employee.JobId, hrDepartment);
+                    return View(employee);
+                }
             }
 
             if (!ModelState.IsValid)
             {
-                ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
-                ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
-                ViewBag.Jobs = new SelectList(_context.Jobs, "JobId", "JobTitle", employee.JobId);
+                LoadJobsForHrCreate(employee.JobId, hrDepartment);
                 return View(employee);
             }
 
             try
             {
-                // User oluştur
-                var user = new User
-                {
-                    Username = username,
-                    UserPassword = userPassword,
-                    Email = employee.Email,
-                    IsActive = employee.IsActive
-                };
-                _context.Users.Add(user);
-                _context.SaveChanges();
+                // User INSERT – SQL
+                const string sqlInsertUser = @"
+                    INSERT INTO Users (Username, UserPassword, Email, IsActive)
+                    VALUES ({0}, {1}, {2}, {3});
+                    SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-                // Employee'ye User ID ata
-                employee.UserId = user.UserId;
+                var newUserId = _context.Database
+                    .SqlQueryRaw<int>(sqlInsertUser, username, userPassword, employee.Email, employee.IsActive)
+                    .AsEnumerable()
+                    .First();
 
-                // Employee kaydet
-                _context.Employees.Add(employee);
-                _context.SaveChanges();
+                employee.UserId = newUserId;
 
-                // HR Rolü ata
-                var hrRoleId = _context.Roles
-                    .Where(r => r.RoleName == "HR")
-                    .Select(r => r.RoleId)
-                    .FirstOrDefault();
+                // Employee INSERT – SQL
+                const string sqlInsertEmployee = @"
+                    INSERT INTO Employees 
+                        (FirstName, LastName, Email, PhoneNumber, IdentityNumber, HireDate, 
+                         DepartmentID, JobID, ManagerID, UserID, IsActive)
+                    VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10});
+                    SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-                var employeeRoleId = _context.Roles
-                    .Where(r => r.RoleName == "Employee")
-                    .Select(r => r.RoleId)
-                    .FirstOrDefault();
+                _context.Database
+                    .SqlQueryRaw<int>(
+                        sqlInsertEmployee,
+                        employee.FirstName,
+                        employee.LastName,
+                        employee.Email,
+                        employee.PhoneNumber,
+                        employee.IdentityNumber,
+                        employee.HireDate,
+                        employee.DepartmentId,
+                        employee.JobId,
+                        employee.ManagerId,
+                        employee.UserId,
+                        employee.IsActive)
+                    .AsEnumerable()
+                    .First();
+
+                // Role ID’leri – SQL
+                const string sqlFindHrRole = "SELECT RoleID FROM Roles WHERE RoleName = 'HR'";
+                var hrRoleId = _context.Database.SqlQueryRaw<int>(sqlFindHrRole).AsEnumerable().FirstOrDefault();
+
+                const string sqlFindEmployeeRole = "SELECT RoleID FROM Roles WHERE RoleName = 'Employee'";
+                var employeeRoleId = _context.Database.SqlQueryRaw<int>(sqlFindEmployeeRole).AsEnumerable().FirstOrDefault();
 
                 if (hrRoleId != 0)
                 {
-                    _context.UserRoles.Add(new UserRole
-                    {
-                        UserId = user.UserId,
-                        RoleId = hrRoleId,
-                        AssignedDate = DateTime.Now
-                    });
+                    const string sqlInsertHrRole = @"
+                        INSERT INTO UserRoles (UserID, RoleID, AssignedDate)
+                        VALUES ({0}, {1}, GETDATE())";
+                    _context.Database.ExecuteSqlRaw(sqlInsertHrRole, newUserId, hrRoleId);
                 }
 
                 if (employeeRoleId != 0)
                 {
-                    _context.UserRoles.Add(new UserRole
-                    {
-                        UserId = user.UserId,
-                        RoleId = employeeRoleId,
-                        AssignedDate = DateTime.Now
-                    });
+                    const string sqlInsertEmpRole = @"
+                        INSERT INTO UserRoles (UserID, RoleID, AssignedDate)
+                        VALUES ({0}, {1}, GETDATE())";
+                    _context.Database.ExecuteSqlRaw(sqlInsertEmpRole, newUserId, employeeRoleId);
                 }
-
-                _context.SaveChanges();
 
                 TempData["SuccessMessage"] = "HR çalışanı başarıyla eklendi!";
                 return RedirectToAction("HREmployees");
@@ -234,14 +270,22 @@ namespace HR.Mvc.Controllers
             catch (Exception ex)
             {
                 ModelState.AddModelError("", "Bir hata oluştu: " + ex.Message);
-                ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
-                ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
-                ViewBag.Jobs = new SelectList(_context.Jobs, "JobId", "JobTitle", employee.JobId);
+                LoadJobsForHrCreate(employee.JobId, hrDepartment);
                 return View(employee);
             }
         }
 
-        // HR Çalışan Silme
+        private void LoadJobsForHrCreate(int? selectedJobId, Department hrDepartment)
+        {
+            ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
+            ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
+
+            const string sqlJobs = "SELECT * FROM Jobs";
+            var jobs = _context.Jobs.FromSqlRaw(sqlJobs).ToList();
+            ViewBag.Jobs = new SelectList(jobs, "JobId", "JobTitle", selectedJobId);
+        }
+
+        // HR Çalışan Silme – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult DeleteHREmployee(int id)
@@ -253,9 +297,12 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
+            const string sqlFindEmp = "SELECT * FROM Employees WHERE EmployeeID = {0}";
             var employee = _context.Employees
+                .FromSqlRaw(sqlFindEmp, id)
                 .Include(e => e.User)
-                .FirstOrDefault(e => e.EmployeeId == id);
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (employee == null)
             {
@@ -265,27 +312,26 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                // İlişkili kayıtları temizle
-                var userRoles = _context.UserRoles.Where(ur => ur.UserId == employee.UserId);
-                _context.UserRoles.RemoveRange(userRoles);
+                const string sqlNullSubordinates = "UPDATE Employees SET ManagerID = NULL WHERE ManagerID = {0}";
+                _context.Database.ExecuteSqlRaw(sqlNullSubordinates, id);
 
+                const string sqlNullReviews = "UPDATE PerformanceReviews SET ReviewerID = NULL WHERE ReviewerID = {0}";
+                _context.Database.ExecuteSqlRaw(sqlNullReviews, id);
+
+                // 1) Employee kaydını sil
+                const string sqlDeleteEmp = "DELETE FROM Employees WHERE EmployeeID = {0}";
+                _context.Database.ExecuteSqlRaw(sqlDeleteEmp, id);
+
+                // 2) UserRoles kayıtlarını sil
+                const string sqlDeleteUserRoles = "DELETE FROM UserRoles WHERE UserID = {0}";
+                _context.Database.ExecuteSqlRaw(sqlDeleteUserRoles, employee.UserId);
+
+                // 3) Kullanıcıyı sil
                 if (employee.User != null)
                 {
-                    _context.Users.Remove(employee.User);
+                    const string sqlDeleteUser = "DELETE FROM Users WHERE UserID = {0}";
+                    _context.Database.ExecuteSqlRaw(sqlDeleteUser, employee.UserId);
                 }
-
-                // 1) Manager ise, astların ManagerID'sini NULL yap
-                var subordinates = _context.Employees.Where(e => e.ManagerId == id).ToList();
-                foreach (var s in subordinates)
-                    s.ManagerId = null;
-
-                // 2) Reviewer ise, PerformanceReview.ReviewerID NULL yapılmalı
-                var reviewsReviewed = _context.PerformanceReviews.Where(r => r.ReviewerId == id).ToList();
-                foreach (var r in reviewsReviewed)
-                    r.ReviewerId = null;
-
-                _context.Employees.Remove(employee);
-                _context.SaveChanges();
 
                 TempData["SuccessMessage"] = "HR çalışanı başarıyla silindi!";
             }
@@ -301,7 +347,7 @@ namespace HR.Mvc.Controllers
 
         #region Jobs Management
 
-        // Jobs Listele
+        // Jobs Listele – SQL
         public IActionResult Jobs()
         {
             var userRole = HttpContext.Session.GetString("UserRole");
@@ -311,11 +357,11 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var jobs = _context.Jobs.ToList();
+            const string sql = "SELECT * FROM Jobs";
+            var jobs = _context.Jobs.FromSqlRaw(sql).ToList();
             return View(jobs);
         }
 
-        // Job Ekleme - GET
         [HttpGet]
         public IActionResult CreateJob()
         {
@@ -329,7 +375,7 @@ namespace HR.Mvc.Controllers
             return View();
         }
 
-        // Job Ekleme - POST
+        // Job Ekle – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult CreateJob(Job job)
@@ -341,7 +387,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Navigation property'leri temizle
             ModelState.Remove("Employees");
 
             if (!ModelState.IsValid)
@@ -351,8 +396,11 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                _context.Jobs.Add(job);
-                _context.SaveChanges();
+                const string sql = @"
+                    INSERT INTO Jobs (JobTitle, MinSalary, MaxSalary)
+                    VALUES ({0}, {1}, {2})";
+
+                _context.Database.ExecuteSqlRaw(sql, job.JobTitle, job.MinSalary, job.MaxSalary);
 
                 TempData["SuccessMessage"] = "İş pozisyonu başarıyla eklendi!";
                 return RedirectToAction("Jobs");
@@ -364,7 +412,7 @@ namespace HR.Mvc.Controllers
             }
         }
 
-        // Job Düzenleme - GET
+        // Job Düzenle – GET – SQL
         [HttpGet]
         public IActionResult EditJob(int id)
         {
@@ -375,7 +423,9 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var job = _context.Jobs.Find(id);
+            const string sql = "SELECT * FROM Jobs WHERE JobID = {0}";
+            var job = _context.Jobs.FromSqlRaw(sql, id).AsEnumerable().FirstOrDefault();
+
             if (job == null)
             {
                 TempData["ErrorMessage"] = "İş pozisyonu bulunamadı!";
@@ -385,7 +435,7 @@ namespace HR.Mvc.Controllers
             return View(job);
         }
 
-        // Job Düzenleme - POST
+        // Job Düzenle – POST – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult EditJob(Job job)
@@ -397,7 +447,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Navigation property'leri temizle
             ModelState.Remove("Employees");
 
             if (!ModelState.IsValid)
@@ -407,18 +456,12 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                var existingJob = _context.Jobs.Find(job.JobId);
-                if (existingJob == null)
-                {
-                    TempData["ErrorMessage"] = "İş pozisyonu bulunamadı!";
-                    return RedirectToAction("Jobs");
-                }
+                const string sql = @"
+                    UPDATE Jobs
+                    SET JobTitle = {0}, MinSalary = {1}, MaxSalary = {2}
+                    WHERE JobID = {3}";
 
-                existingJob.JobTitle = job.JobTitle;
-                existingJob.MinSalary = job.MinSalary;
-                existingJob.MaxSalary = job.MaxSalary;
-
-                _context.SaveChanges();
+                _context.Database.ExecuteSqlRaw(sql, job.JobTitle, job.MinSalary, job.MaxSalary, job.JobId);
 
                 TempData["SuccessMessage"] = "İş pozisyonu başarıyla güncellendi!";
                 return RedirectToAction("Jobs");
@@ -430,7 +473,7 @@ namespace HR.Mvc.Controllers
             }
         }
 
-        // Job Silme
+        // Job Sil – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult DeleteJob(int id)
@@ -442,16 +485,10 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var job = _context.Jobs.Find(id);
-            if (job == null)
-            {
-                TempData["ErrorMessage"] = "İş pozisyonu bulunamadı!";
-                return RedirectToAction("Jobs");
-            }
+            const string sqlCheck = "SELECT COUNT(*) AS Value FROM Employees WHERE JobID = {0}";
+            var hasEmployees = _context.Database.SqlQueryRaw<int>(sqlCheck, id).AsEnumerable().FirstOrDefault();
 
-            // İlişkili employee var mı kontrol et
-            var hasEmployees = _context.Employees.Any(e => e.JobId == id);
-            if (hasEmployees)
+            if (hasEmployees > 0)
             {
                 TempData["ErrorMessage"] = "Bu iş pozisyonuna bağlı çalışanlar var! Önce çalışanların pozisyonunu değiştirin.";
                 return RedirectToAction("Jobs");
@@ -459,8 +496,8 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                _context.Jobs.Remove(job);
-                _context.SaveChanges();
+                const string sql = "DELETE FROM Jobs WHERE JobID = {0}";
+                _context.Database.ExecuteSqlRaw(sql, id);
 
                 TempData["SuccessMessage"] = "İş pozisyonu başarıyla silindi!";
             }
@@ -476,7 +513,7 @@ namespace HR.Mvc.Controllers
 
         #region Leave Types Management
 
-        // Leave Types Listele
+        // LeaveTypes Listele – SQL
         public IActionResult LeaveTypes()
         {
             var userRole = HttpContext.Session.GetString("UserRole");
@@ -486,11 +523,11 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var leaveTypes = _context.LeaveTypes.ToList();
+            const string sql = "SELECT * FROM LeaveTypes";
+            var leaveTypes = _context.LeaveTypes.FromSqlRaw(sql).ToList();
             return View(leaveTypes);
         }
 
-        // Leave Type Ekleme - GET
         [HttpGet]
         public IActionResult CreateLeaveType()
         {
@@ -504,7 +541,7 @@ namespace HR.Mvc.Controllers
             return View();
         }
 
-        // Leave Type Ekleme - POST
+        // LeaveType Ekle – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult CreateLeaveType(LeaveType leaveType)
@@ -516,7 +553,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Navigation property'leri temizle
             ModelState.Remove("LeaveRequests");
 
             if (!ModelState.IsValid)
@@ -526,8 +562,11 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                _context.LeaveTypes.Add(leaveType);
-                _context.SaveChanges();
+                const string sql = @"
+                    INSERT INTO LeaveTypes (TypeName, DaysAllowed)
+                    VALUES ({0}, {1})";
+
+                _context.Database.ExecuteSqlRaw(sql, leaveType.TypeName, leaveType.DaysAllowed);
 
                 TempData["SuccessMessage"] = "İzin türü başarıyla eklendi!";
                 return RedirectToAction("LeaveTypes");
@@ -539,7 +578,7 @@ namespace HR.Mvc.Controllers
             }
         }
 
-        // Leave Type Düzenleme - GET
+        // EditLeaveType – GET – SQL
         [HttpGet]
         public IActionResult EditLeaveType(int id)
         {
@@ -550,7 +589,9 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var leaveType = _context.LeaveTypes.Find(id);
+            const string sql = "SELECT * FROM LeaveTypes WHERE LeaveTypeID = {0}";
+            var leaveType = _context.LeaveTypes.FromSqlRaw(sql, id).AsEnumerable().FirstOrDefault();
+
             if (leaveType == null)
             {
                 TempData["ErrorMessage"] = "İzin türü bulunamadı!";
@@ -560,7 +601,7 @@ namespace HR.Mvc.Controllers
             return View(leaveType);
         }
 
-        // Leave Type Düzenleme - POST
+        // EditLeaveType – POST – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult EditLeaveType(LeaveType leaveType)
@@ -572,7 +613,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Navigation property'leri temizle
             ModelState.Remove("LeaveRequests");
 
             if (!ModelState.IsValid)
@@ -582,17 +622,12 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                var existingLeaveType = _context.LeaveTypes.Find(leaveType.LeaveTypeId);
-                if (existingLeaveType == null)
-                {
-                    TempData["ErrorMessage"] = "İzin türü bulunamadı!";
-                    return RedirectToAction("LeaveTypes");
-                }
+                const string sql = @"
+                    UPDATE LeaveTypes
+                    SET TypeName = {0}, DaysAllowed = {1}
+                    WHERE LeaveTypeID = {2}";
 
-                existingLeaveType.TypeName = leaveType.TypeName;
-                existingLeaveType.DaysAllowed = leaveType.DaysAllowed;
-
-                _context.SaveChanges();
+                _context.Database.ExecuteSqlRaw(sql, leaveType.TypeName, leaveType.DaysAllowed, leaveType.LeaveTypeId);
 
                 TempData["SuccessMessage"] = "İzin türü başarıyla güncellendi!";
                 return RedirectToAction("LeaveTypes");
@@ -604,7 +639,7 @@ namespace HR.Mvc.Controllers
             }
         }
 
-        // Leave Type Silme
+        // DeleteLeaveType – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult DeleteLeaveType(int id)
@@ -616,16 +651,10 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var leaveType = _context.LeaveTypes.Find(id);
-            if (leaveType == null)
-            {
-                TempData["ErrorMessage"] = "İzin türü bulunamadı!";
-                return RedirectToAction("LeaveTypes");
-            }
+            const string sqlCheck = "SELECT COUNT(*) AS Value FROM LeaveRequests WHERE LeaveTypeID = {0}";
+            var hasRequests = _context.Database.SqlQueryRaw<int>(sqlCheck, id).AsEnumerable().FirstOrDefault();
 
-            // İlişkili leave request var mı kontrol et
-            var hasRequests = _context.LeaveRequests.Any(lr => lr.LeaveTypeId == id);
-            if (hasRequests)
+            if (hasRequests > 0)
             {
                 TempData["ErrorMessage"] = "Bu izin türüne bağlı izin talepleri var! Silinemez.";
                 return RedirectToAction("LeaveTypes");
@@ -633,8 +662,8 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                _context.LeaveTypes.Remove(leaveType);
-                _context.SaveChanges();
+                const string sql = "DELETE FROM LeaveTypes WHERE LeaveTypeID = {0}";
+                _context.Database.ExecuteSqlRaw(sql, id);
 
                 TempData["SuccessMessage"] = "İzin türü başarıyla silindi!";
             }
@@ -650,7 +679,7 @@ namespace HR.Mvc.Controllers
 
         #region Locations Management
 
-        // Locations Listele
+        // Locations – Listele – SQL
         public IActionResult Locations()
         {
             var userRole = HttpContext.Session.GetString("UserRole");
@@ -660,11 +689,11 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var locations = _context.Locations.ToList();
+            const string sql = "SELECT * FROM Locations";
+            var locations = _context.Locations.FromSqlRaw(sql).ToList();
             return View(locations);
         }
 
-        // Location Ekleme - GET
         [HttpGet]
         public IActionResult CreateLocation()
         {
@@ -678,7 +707,7 @@ namespace HR.Mvc.Controllers
             return View();
         }
 
-        // Location Ekleme - POST
+        // CreateLocation – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult CreateLocation(Location location)
@@ -690,7 +719,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Navigation property'leri temizle
             ModelState.Remove("Departments");
 
             if (!ModelState.IsValid)
@@ -700,8 +728,11 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                _context.Locations.Add(location);
-                _context.SaveChanges();
+                const string sql = @"
+                    INSERT INTO Locations (LocationName, Address)
+                    VALUES ({0}, {1})";
+
+                _context.Database.ExecuteSqlRaw(sql, location.LocationName, location.Address);
 
                 TempData["SuccessMessage"] = "Lokasyon başarıyla eklendi!";
                 return RedirectToAction("Locations");
@@ -713,7 +744,7 @@ namespace HR.Mvc.Controllers
             }
         }
 
-        // Location Düzenleme - GET
+        // EditLocation – GET – SQL
         [HttpGet]
         public IActionResult EditLocation(int id)
         {
@@ -724,7 +755,9 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var location = _context.Locations.Find(id);
+            const string sql = "SELECT * FROM Locations WHERE LocationID = {0}";
+            var location = _context.Locations.FromSqlRaw(sql, id).AsEnumerable().FirstOrDefault();
+
             if (location == null)
             {
                 TempData["ErrorMessage"] = "Lokasyon bulunamadı!";
@@ -734,7 +767,7 @@ namespace HR.Mvc.Controllers
             return View(location);
         }
 
-        // Location Düzenleme - POST
+        // EditLocation – POST – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult EditLocation(Location location)
@@ -746,7 +779,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Navigation property'leri temizle
             ModelState.Remove("Departments");
 
             if (!ModelState.IsValid)
@@ -756,17 +788,12 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                var existingLocation = _context.Locations.Find(location.LocationId);
-                if (existingLocation == null)
-                {
-                    TempData["ErrorMessage"] = "Lokasyon bulunamadı!";
-                    return RedirectToAction("Locations");
-                }
+                const string sql = @"
+                    UPDATE Locations
+                    SET LocationName = {0}, Address = {1}
+                    WHERE LocationID = {2}";
 
-                existingLocation.LocationName = location.LocationName;
-                existingLocation.Address = location.Address;
-
-                _context.SaveChanges();
+                _context.Database.ExecuteSqlRaw(sql, location.LocationName, location.Address, location.LocationId);
 
                 TempData["SuccessMessage"] = "Lokasyon başarıyla güncellendi!";
                 return RedirectToAction("Locations");
@@ -778,7 +805,7 @@ namespace HR.Mvc.Controllers
             }
         }
 
-        // Location Silme
+        // DeleteLocation – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult DeleteLocation(int id)
@@ -790,16 +817,10 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var location = _context.Locations.Find(id);
-            if (location == null)
-            {
-                TempData["ErrorMessage"] = "Lokasyon bulunamadı!";
-                return RedirectToAction("Locations");
-            }
+            const string sqlCheck = "SELECT COUNT(*) AS Value FROM Departments WHERE LocationID = {0}";
+            var hasDepartments = _context.Database.SqlQueryRaw<int>(sqlCheck, id).AsEnumerable().FirstOrDefault();
 
-            // İlişkili department var mı kontrol et
-            var hasDepartments = _context.Departments.Any(d => d.LocationId == id);
-            if (hasDepartments)
+            if (hasDepartments > 0)
             {
                 TempData["ErrorMessage"] = "Bu lokasyona bağlı departmanlar var! Önce departmanların lokasyonunu değiştirin.";
                 return RedirectToAction("Locations");
@@ -807,8 +828,8 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                _context.Locations.Remove(location);
-                _context.SaveChanges();
+                const string sql = "DELETE FROM Locations WHERE LocationID = {0}";
+                _context.Database.ExecuteSqlRaw(sql, id);
 
                 TempData["SuccessMessage"] = "Lokasyon başarıyla silindi!";
             }
@@ -824,7 +845,7 @@ namespace HR.Mvc.Controllers
 
         #region Roles Management
 
-        // Roles Listele
+        // Roles – Listele – SQL
         public IActionResult Roles()
         {
             var userRole = HttpContext.Session.GetString("UserRole");
@@ -834,11 +855,11 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var roles = _context.Roles.ToList();
+            const string sql = "SELECT * FROM Roles";
+            var roles = _context.Roles.FromSqlRaw(sql).ToList();
             return View(roles);
         }
 
-        // Role Ekleme - GET
         [HttpGet]
         public IActionResult CreateRole()
         {
@@ -852,7 +873,7 @@ namespace HR.Mvc.Controllers
             return View();
         }
 
-        // Role Ekleme - POST
+        // Role Ekle – SQL
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult CreateRole(Role role)
@@ -864,7 +885,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Navigation property'leri temizle
             ModelState.Remove("UserRoles");
 
             if (!ModelState.IsValid)
@@ -872,8 +892,10 @@ namespace HR.Mvc.Controllers
                 return View(role);
             }
 
-            // Aynı isimde rol var mı kontrol et
-            if (_context.Roles.Any(r => r.RoleName == role.RoleName))
+            const string sqlCheck = "SELECT COUNT(*) AS Value FROM Roles WHERE RoleName = {0}";
+            var exists = _context.Database.SqlQueryRaw<int>(sqlCheck, role.RoleName).AsEnumerable().FirstOrDefault();
+
+            if (exists > 0)
             {
                 ModelState.AddModelError("", "Bu rol adı zaten mevcut!");
                 return View(role);
@@ -881,8 +903,11 @@ namespace HR.Mvc.Controllers
 
             try
             {
-                _context.Roles.Add(role);
-                _context.SaveChanges();
+                const string sql = @"
+                    INSERT INTO Roles (RoleName, RoleDescription)
+                    VALUES ({0}, {1})";
+
+                _context.Database.ExecuteSqlRaw(sql, role.RoleName, role.RoleDescription);
 
                 TempData["SuccessMessage"] = "Rol başarıyla eklendi!";
                 return RedirectToAction("Roles");
