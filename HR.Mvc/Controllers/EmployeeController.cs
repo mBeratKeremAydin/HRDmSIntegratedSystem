@@ -13,6 +13,7 @@ namespace HR.Mvc.Controllers
         {
             _context = context;
         }
+
         public IActionResult Index()
         {
             // Session kontrolü
@@ -25,8 +26,16 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Employee bilgisini getir
+            if (employeeId == null)
+            {
+                TempData["ErrorMessage"] = "Oturumdaki EmployeeId bulunamadı!";
+                return RedirectToAction("Index", "Login");
+            }
+
+            // Employee bilgisini getir (SQL + Include)
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var employee = _context.Employees
+                .FromSqlRaw(sqlEmp, employeeId.Value)
                 .Include(e => e.Department)
                 .Include(e => e.Job)
                 .Include(e => e.Manager)
@@ -36,7 +45,8 @@ namespace HR.Mvc.Controllers
                 .Include(e => e.Attendances)
                 .Include(e => e.PerformanceReviewEmployees)
                 .Include(e => e.Documents)
-                .FirstOrDefault(e => e.EmployeeId == employeeId);
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (employee == null)
             {
@@ -44,7 +54,7 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // İstatistikler için hesaplamalar
+            // İstatistikler için hesaplamalar (in-memory)
             ViewBag.TotalLeaveRequests = employee.LeaveRequests.Count;
             ViewBag.PendingLeaveRequests = employee.LeaveRequests.Count(l => l.Status == "Pending");
             ViewBag.ApprovedLeaveRequests = employee.LeaveRequests.Count(l => l.Status == "Approved");
@@ -78,13 +88,16 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index");
             }
 
+            const string sql = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var emp = _context.Employees
+                .FromSqlRaw(sql, id)
                 .Include(e => e.Department)
-                    .ThenInclude(d => d.Manager)  // Departman yöneticisini dahil et
+                    .ThenInclude(d => d.Manager)
                 .Include(e => e.Job)
                 .Include(e => e.Manager)
                 .Include(e => e.EmploymentContracts)
-                .FirstOrDefault(e => e.EmployeeId == id);
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (emp == null)
                 return NotFound();
@@ -96,25 +109,42 @@ namespace HR.Mvc.Controllers
         [HttpGet]
         public IActionResult Create()
         {
-            // Dropdown listeleri için ViewBag'e veri yükleme
+            // Departments
+            const string sqlDeps = @"SELECT * FROM Departments";
             ViewBag.Departments = _context.Departments
+                .FromSqlRaw(sqlDeps)
+                .AsEnumerable()
                 .Select(d => new { d.DepartmentId, d.DepartmentName })
                 .ToList();
 
+            // Jobs
+            const string sqlJobs = @"SELECT * FROM Jobs";
             ViewBag.Jobs = _context.Jobs
+                .FromSqlRaw(sqlJobs)
+                .AsEnumerable()
                 .Select(j => new { j.JobId, j.JobTitle })
                 .ToList();
 
-            ViewBag.Managers = _context.Users
-                .Where(u => u.UserRoles.Any(ur =>
-                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+            // Managers: HR veya Admin rolüne sahip kullanıcılar
+            const string sqlManagers = @"
+                SELECT u.*
+                FROM Users u
+                JOIN UserRoles ur ON u.UserID = ur.UserID
+                JOIN Roles r ON ur.RoleID = r.RoleID
+                WHERE r.RoleName IN ('HR', 'Admin')";
+
+            var managers = _context.Users
+                .FromSqlRaw(sqlManagers)
+                .AsEnumerable()
+                .DistinctBy(u => u.UserId) // aynı kullanıcıya birden fazla rol gelirse
                 .Select(u => new SelectListItem
                 {
                     Value = u.UserId.ToString(),
-                    Text = u.Username   // İstersen ad-soyad vs. property ekleyip kullan
+                    Text = u.Username
                 })
                 .ToList();
 
+            ViewBag.Managers = managers;
 
             return View();
         }
@@ -133,15 +163,17 @@ namespace HR.Mvc.Controllers
             decimal? contractSalary = null,
             string? contractType = null)
         {
-            // Rol id'leri
-            int hrRoleId = _context.Roles
-                .Where(r => r.RoleName == "HR")
-                .Select(r => r.RoleId)
+            // Rol id'leri (SQL)
+            const string sqlHrRole = "SELECT RoleID FROM Roles WHERE RoleName = 'HR'";
+            int hrRoleId = _context.Database
+                .SqlQueryRaw<int>(sqlHrRole)
+                .AsEnumerable()
                 .FirstOrDefault();
 
-            int employeeRoleId = _context.Roles
-                .Where(r => r.RoleName == "Employee")
-                .Select(r => r.RoleId)
+            const string sqlEmpRole = "SELECT RoleID FROM Roles WHERE RoleName = 'Employee'";
+            int employeeRoleId = _context.Database
+                .SqlQueryRaw<int>(sqlEmpRole)
+                .AsEnumerable()
                 .FirstOrDefault();
 
             try
@@ -154,81 +186,121 @@ namespace HR.Mvc.Controllers
                     return View(employee);
                 }
 
-                // Kullanıcı adı kontrolü
-                if (_context.Users.Any(u => u.Username == username))
+                // Kullanıcı adı kontrolü (SQL)
+                const string sqlCheckUsername = "SELECT COUNT(*) AS Value FROM Users WHERE Username = {0}";
+                var usernameExists = _context.Database
+                    .SqlQueryRaw<int>(sqlCheckUsername, username)
+                    .AsEnumerable()
+                    .FirstOrDefault() > 0;
+
+                if (usernameExists)
                 {
                     ModelState.AddModelError("Username", "Bu kullanıcı adı zaten kullanılıyor.");
                     ReloadDropdowns();
                     return View(employee);
                 }
 
-                // ✅ EMAIL KONTROLÜ EKLE
-                if (!string.IsNullOrEmpty(employee.Email) && _context.Users.Any(u => u.Email == employee.Email))
+                // EMAIL KONTROLÜ (SQL)
+                if (!string.IsNullOrEmpty(employee.Email))
                 {
-                    ModelState.AddModelError("Email", "Bu email adresi zaten kullanılıyor.");
-                    ReloadDropdowns();
-                    return View(employee);
+                    const string sqlCheckEmail = "SELECT COUNT(*) AS Value FROM Users WHERE Email = {0}";
+                    var emailExists = _context.Database
+                        .SqlQueryRaw<int>(sqlCheckEmail, employee.Email)
+                        .AsEnumerable()
+                        .FirstOrDefault() > 0;
+
+                    if (emailExists)
+                    {
+                        ModelState.AddModelError("Email", "Bu email adresi zaten kullanılıyor.");
+                        ReloadDropdowns();
+                        return View(employee);
+                    }
                 }
 
+                // User INSERT
+                const string sqlInsertUser = @"
+                    INSERT INTO Users (Username, UserPassword, Email, IsActive)
+                    VALUES ({0}, {1}, {2}, {3});
+                    SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-                // User oluştur
-                var user = new User
-                {
-                    Username = username,
-                    UserPassword = userPassword,
-                    Email = employee.Email,
-                    IsActive = employee.IsActive
-                };
+                int newUserId = _context.Database
+                    .SqlQueryRaw<int>(sqlInsertUser, username, userPassword, employee.Email, employee.IsActive)
+                    .AsEnumerable()
+                    .First();
 
-                _context.Users.Add(user);
-                _context.SaveChanges();
+                employee.UserId = newUserId;
 
-                // Employee'ye User ID'yi ata
-                employee.UserId = user.UserId;
-
-                // Departman kontrolü ve rol ataması
+                // Departman kontrolü ve HR rolü atama
+                const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
                 var department = _context.Departments
-                    .FirstOrDefault(d => d.DepartmentId == employee.DepartmentId);
+                    .FromSqlRaw(sqlDep, employee.DepartmentId)
+                    .AsEnumerable()
+                    .FirstOrDefault();
 
                 if (department != null &&
                     !string.IsNullOrEmpty(department.DepartmentName) &&
-                    department.DepartmentName.Equals("HR", StringComparison.OrdinalIgnoreCase))
+                    department.DepartmentName.Equals("HR", StringComparison.OrdinalIgnoreCase) &&
+                    hrRoleId != 0)
                 {
-                    _context.UserRoles.Add(new UserRole
-                    {
-                        UserId = user.UserId,
-                        RoleId = hrRoleId,
-                        AssignedDate = DateTime.Now
-                    });
+                    const string sqlInsertHrUserRole = @"
+                        INSERT INTO UserRoles (UserID, RoleID, AssignedDate)
+                        VALUES ({0}, {1}, GETDATE())";
+
+                    _context.Database.ExecuteSqlRaw(sqlInsertHrUserRole, newUserId, hrRoleId);
                 }
 
                 // Her çalışana Employee rolü
-                _context.UserRoles.Add(new UserRole
+                if (employeeRoleId != 0)
                 {
-                    UserId = user.UserId,
-                    RoleId = employeeRoleId,
-                    AssignedDate = DateTime.Now
-                });
+                    const string sqlInsertEmpUserRole = @"
+                        INSERT INTO UserRoles (UserID, RoleID, AssignedDate)
+                        VALUES ({0}, {1}, GETDATE())";
 
-                // Employee kaydet
-                _context.Employees.Add(employee);
-                _context.SaveChanges();
+                    _context.Database.ExecuteSqlRaw(sqlInsertEmpUserRole, newUserId, employeeRoleId);
+                }
+
+                // Employee INSERT
+                const string sqlInsertEmp = @"
+                    INSERT INTO Employees 
+                        (FirstName, LastName, Email, PhoneNumber, IdentityNumber, HireDate, 
+                         DepartmentID, JobID, ManagerID, UserID, IsActive)
+                    VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10});
+                    SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+                int newEmployeeId = _context.Database
+                    .SqlQueryRaw<int>(
+                        sqlInsertEmp,
+                        employee.FirstName,
+                        employee.LastName,
+                        employee.Email,
+                        employee.PhoneNumber,
+                        employee.IdentityNumber,
+                        employee.HireDate,
+                        employee.DepartmentId,
+                        employee.JobId,
+                        employee.ManagerId,
+                        employee.UserId,
+                        employee.IsActive)
+                    .AsEnumerable()
+                    .First();
+
+                employee.EmployeeId = newEmployeeId;
 
                 // Sözleşme oluşturma
                 if (createContract && contractStartDate.HasValue && contractSalary.HasValue)
                 {
-                    var contract = new EmploymentContract
-                    {
-                        EmployeeId = employee.EmployeeId,
-                        StartDate = contractStartDate.Value,
-                        EndDate = contractEndDate,
-                        Salary = contractSalary.Value,
-                        ContractType = contractType ?? "Belirsiz Süreli",
-                        IsActive = true
-                    };
+                    const string sqlInsertContract = @"
+                        INSERT INTO EmploymentContracts
+                            (EmployeeID, StartDate, EndDate, Salary, ContractType, IsActive)
+                        VALUES ({0}, {1}, {2}, {3}, {4}, 1)";
 
-                    _context.EmploymentContracts.Add(contract);
-                    _context.SaveChanges();
+                    _context.Database.ExecuteSqlRaw(
+                        sqlInsertContract,
+                        newEmployeeId,
+                        contractStartDate.Value,
+                        contractEndDate,
+                        contractSalary.Value,
+                        contractType ?? "Belirsiz Süreli");
                 }
 
                 TempData["SuccessMessage"] = "Çalışan başarıyla eklendi!";
@@ -244,17 +316,34 @@ namespace HR.Mvc.Controllers
 
         private void ReloadDropdowns()
         {
+            // Departments
+            const string sqlDeps = @"SELECT * FROM Departments";
             ViewBag.Departments = _context.Departments
+                .FromSqlRaw(sqlDeps)
+                .AsEnumerable()
                 .Select(d => new { d.DepartmentId, d.DepartmentName })
                 .ToList();
 
+            // Jobs
+            const string sqlJobs = @"SELECT * FROM Jobs";
             ViewBag.Jobs = _context.Jobs
+                .FromSqlRaw(sqlJobs)
+                .AsEnumerable()
                 .Select(j => new { j.JobId, j.JobTitle })
                 .ToList();
 
+            // Managers
+            const string sqlManagers = @"
+                SELECT u.*
+                FROM Users u
+                JOIN UserRoles ur ON u.UserID = ur.UserID
+                JOIN Roles r ON ur.RoleID = r.RoleID
+                WHERE r.RoleName IN ('HR', 'Admin')";
+
             ViewBag.Managers = _context.Users
-                .Where(u => u.UserRoles.Any(ur =>
-                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+                .FromSqlRaw(sqlManagers)
+                .AsEnumerable()
+                .DistinctBy(u => u.UserId)
                 .Select(u => new SelectListItem
                 {
                     Value = u.UserId.ToString(),
@@ -269,65 +358,81 @@ namespace HR.Mvc.Controllers
             var employeeId = HttpContext.Session.GetInt32("EmployeeId");
             var userRole = HttpContext.Session.GetString("UserRole");
 
-            if (id == employeeId || userId==id)
+            if (id == employeeId || userId == id)
             {
                 TempData["ErrorMessage"] = "Kendi profilinizi silemezsiniz!";
                 return RedirectToAction("Index", "HR");
             }
 
-            var emp = _context.Employees.FirstOrDefault(e => e.EmployeeId == id);
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
+            var emp = _context.Employees
+                .FromSqlRaw(sqlEmp, id)
+                .AsEnumerable()
+                .FirstOrDefault();
 
-            // 1) Manager ise, astların ManagerID'sini NULL yap
-            var subordinates = _context.Employees.Where(e => e.ManagerId == id).ToList();
-            foreach (var s in subordinates)
-                s.ManagerId = null;
-
-            // 2) Reviewer ise, PerformanceReview.ReviewerID NULL yapılmalı
-            var reviewsReviewed = _context.PerformanceReviews.Where(r => r.ReviewerId == id).ToList();
-            foreach (var r in reviewsReviewed)
-                r.ReviewerId = null;
-
-
-            //user kaydınıda sil
-            if (emp.UserId != null)
+            if (emp == null)
             {
-                var user = _context.Users.FirstOrDefault(u => u.UserId == emp.UserId);
-                _context.Users.Remove(user);
+                TempData["ErrorMessage"] = "Çalışan bulunamadı!";
+                return RedirectToAction("Index", "HR");
             }
 
-            _context.Employees.Remove(emp);
-            _context.SaveChanges();
-            return RedirectToAction("Index","HR");
+            // 1) Manager ise, astların ManagerID'sini NULL yap
+            const string sqlNullSubs = @"UPDATE Employees SET ManagerID = NULL WHERE ManagerID = {0}";
+            _context.Database.ExecuteSqlRaw(sqlNullSubs, id);
+
+            // 2) Reviewer ise, PerformanceReview.ReviewerID NULL yapılmalı
+            const string sqlNullReviews = @"UPDATE PerformanceReviews SET ReviewerID = NULL WHERE ReviewerID = {0}";
+            _context.Database.ExecuteSqlRaw(sqlNullReviews, id);
+
+            // 3) Employee'yi sil
+            const string sqlDeleteEmp = @"DELETE FROM Employees WHERE EmployeeID = {0}";
+            _context.Database.ExecuteSqlRaw(sqlDeleteEmp, id);
+
+            // 4) Kullanıcıyı da sil
+            if (emp.UserId != null)
+            {
+                const string sqlDeleteUser = @"DELETE FROM Users WHERE UserID = {0}";
+                _context.Database.ExecuteSqlRaw(sqlDeleteUser, emp.UserId.Value);
+            }
+
+            return RedirectToAction("Index", "HR");
         }
 
         [HttpGet]
-
         public IActionResult Edit(int id)
         {
             var employeeId = HttpContext.Session.GetInt32("EmployeeId");
-            var userId = HttpContext.Session.GetInt32("UserId");
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
 
-            if (id == employeeId || userId == id)
+            if (id == employeeId || sessionUserId == id)
             {
                 TempData["ErrorMessage"] = "Kendi profilinizi Güncelleyemezsiniz!";
                 return RedirectToAction("Index", "HR");
             }
 
-            // 1) Employee'i bul (Sözleşme ile birlikte)
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var emp = _context.Employees
+                .FromSqlRaw(sqlEmp, id)
                 .Include(e => e.EmploymentContracts)
                 .Include(e => e.Department)
-                .FirstOrDefault(e => e.EmployeeId == id);
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (emp == null)
                 return NotFound();
-            // Bu employee herhangi bir departmanın yöneticisi mi?
-            bool isDepartmentManager = _context.Departments
-                .Any(d => d.ManagerId == emp.EmployeeId);
+
+            const string sqlIsMgr = @"SELECT COUNT(*) AS Value FROM Departments WHERE ManagerID = {0}";
+            bool isDepartmentManager = _context.Database
+                .SqlQueryRaw<int>(sqlIsMgr, emp.EmployeeId)
+                .AsEnumerable()
+                .FirstOrDefault() > 0;
 
             ViewBag.IsDepartmentManager = isDepartmentManager;
 
+            const string sqlDeps = @"SELECT * FROM Departments";
             ViewBag.Departments = _context.Departments
+                .FromSqlRaw(sqlDeps)
+                .AsEnumerable()
                 .Select(d => new SelectListItem
                 {
                     Value = d.DepartmentId.ToString(),
@@ -336,7 +441,10 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
+            const string sqlJobs = @"SELECT * FROM Jobs";
             ViewBag.Jobs = _context.Jobs
+                .FromSqlRaw(sqlJobs)
+                .AsEnumerable()
                 .Select(j => new SelectListItem
                 {
                     Value = j.JobId.ToString(),
@@ -345,10 +453,17 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
-            // Edit için de sadece HR & Admin rollerine sahip kullanıcılar
+            const string sqlManagers = @"
+                SELECT u.*
+                FROM Users u
+                JOIN UserRoles ur ON u.UserID = ur.UserID
+                JOIN Roles r ON ur.RoleID = r.RoleID
+                WHERE r.RoleName IN ('HR', 'Admin')";
+
             ViewBag.Managers = _context.Users
-                .Where(u => u.UserRoles.Any(ur =>
-                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+                .FromSqlRaw(sqlManagers)
+                .AsEnumerable()
+                .DistinctBy(u => u.UserId)
                 .Select(u => new SelectListItem
                 {
                     Value = u.UserId.ToString(),
@@ -357,26 +472,24 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
-            // 3) Aktif sözleşmeyi ViewBag'e ekle
             var activeContract = emp.EmploymentContracts?.FirstOrDefault(c => c.IsActive);
             ViewBag.ActiveContract = activeContract;
 
             return View(emp);
         }
 
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Edit(
-        Employee model,
-        bool updateContract = false,
-        int? contractId = null,
-        DateOnly? contractStartDate = null,
-        DateOnly? contractEndDate = null,
-        decimal? contractSalary = null,
-        string? contractType = null)
+            Employee model,
+            bool updateContract = false,
+            int? contractId = null,
+            DateOnly? contractStartDate = null,
+            DateOnly? contractEndDate = null,
+            decimal? contractSalary = null,
+            string? contractType = null)
         {
-            // ✅ EKLE: Navigation property'leri ModelState'den temizle
+            // Navigation property'leri ModelState'den temizle
             ModelState.Remove("Department");
             ModelState.Remove("Job");
             ModelState.Remove("Manager");
@@ -390,12 +503,12 @@ namespace HR.Mvc.Controllers
             ModelState.Remove("PerformanceReviewEmployees");
             ModelState.Remove("PerformanceReviewReviewers");
 
-            // DEBUG: ModelState hatalarını logla
             if (!ModelState.IsValid)
             {
                 var errors = ModelState
                     .Where(x => x.Value.Errors.Count > 0)
-                    .Select(x => new {
+                    .Select(x => new
+                    {
                         Field = x.Key,
                         Errors = x.Value.Errors.Select(e => e.ErrorMessage).ToArray()
                     })
@@ -404,22 +517,33 @@ namespace HR.Mvc.Controllers
                 ViewBag.ValidationErrors = errors;
                 ReloadDropdownsForEdit(model);
 
-                // Aktif sözleşmeyi yeniden yükle
-                var emp = _context.Employees.Include(e => e.EmploymentContracts).FirstOrDefault(e => e.EmployeeId == model.EmployeeId);
-                ViewBag.ActiveContract = emp?.EmploymentContracts?.FirstOrDefault(c => c.IsActive);
+                const string sqlEmpReload = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
+                var empReload = _context.Employees
+                    .FromSqlRaw(sqlEmpReload, model.EmployeeId)
+                    .Include(e => e.EmploymentContracts)
+                    .AsEnumerable()
+                    .FirstOrDefault();
+
+                ViewBag.ActiveContract = empReload?.EmploymentContracts?.FirstOrDefault(c => c.IsActive);
 
                 return View(model);
             }
 
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var employee = _context.Employees
+                .FromSqlRaw(sqlEmp, model.EmployeeId)
                 .Include(e => e.EmploymentContracts)
-                .FirstOrDefault(e => e.EmployeeId == model.EmployeeId);
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (employee == null)
                 return NotFound();
 
-            bool isDepartmentManager = _context.Departments
-                .Any(d => d.ManagerId == employee.EmployeeId);
+            const string sqlIsMgr = @"SELECT COUNT(*) AS Value FROM Departments WHERE ManagerID = {0}";
+            bool isDepartmentManager = _context.Database
+                .SqlQueryRaw<int>(sqlIsMgr, employee.EmployeeId)
+                .AsEnumerable()
+                .FirstOrDefault() > 0;
 
             // Çalışan bilgilerini güncelle
             employee.FirstName = model.FirstName;
@@ -434,7 +558,7 @@ namespace HR.Mvc.Controllers
 
             if (!isDepartmentManager)
             {
-                employee.DepartmentId = model.DepartmentId; 
+                employee.DepartmentId = model.DepartmentId;
             }
 
             // Sözleşme güncellemesi
@@ -459,7 +583,10 @@ namespace HR.Mvc.Controllers
 
         private void ReloadDropdownsForEdit(Employee model)
         {
+            const string sqlDeps = @"SELECT * FROM Departments";
             ViewBag.Departments = _context.Departments
+                .FromSqlRaw(sqlDeps)
+                .AsEnumerable()
                 .Select(d => new SelectListItem
                 {
                     Value = d.DepartmentId.ToString(),
@@ -468,7 +595,10 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
+            const string sqlJobs = @"SELECT * FROM Jobs";
             ViewBag.Jobs = _context.Jobs
+                .FromSqlRaw(sqlJobs)
+                .AsEnumerable()
                 .Select(j => new SelectListItem
                 {
                     Value = j.JobId.ToString(),
@@ -477,9 +607,17 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
+            const string sqlManagers = @"
+                SELECT u.*
+                FROM Users u
+                JOIN UserRoles ur ON u.UserID = ur.UserID
+                JOIN Roles r ON ur.RoleID = r.RoleID
+                WHERE r.RoleName IN ('HR', 'Admin')";
+
             ViewBag.Managers = _context.Users
-                .Where(u => u.UserRoles.Any(ur =>
-                    ur.Role.RoleName == "HR" || ur.Role.RoleName == "Admin"))
+                .FromSqlRaw(sqlManagers)
+                .AsEnumerable()
+                .DistinctBy(u => u.UserId)
                 .Select(u => new SelectListItem
                 {
                     Value = u.UserId.ToString(),
@@ -503,11 +641,14 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index");
             }
 
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var emp = _context.Employees
+                .FromSqlRaw(sqlEmp, id)
                 .Include(e => e.Department)
                 .Include(e => e.Job)
                 .Include(e => e.Attendances)
-                .FirstOrDefault(e => e.EmployeeId == id);
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (emp == null)
                 return NotFound();
@@ -523,28 +664,28 @@ namespace HR.Mvc.Controllers
             try
             {
                 var today = DateOnly.FromDateTime(DateTime.Now);
-                
-                // Bugün zaten giriş yapmış mı kontrol et
-                var existingAttendance = _context.Attendances
-                    .FirstOrDefault(a => a.EmployeeId == employeeId && a.Date == today);
 
-                if (existingAttendance != null)
+                const string sqlCheck = @"
+                    SELECT COUNT(*) AS Value
+                    FROM Attendances
+                    WHERE EmployeeID = {0} AND [Date] = {1}";
+
+                bool exists = _context.Database
+                    .SqlQueryRaw<int>(sqlCheck, employeeId, today)
+                    .AsEnumerable()
+                    .FirstOrDefault() > 0;
+
+                if (exists)
                 {
                     TempData["ErrorMessage"] = "Bugün için zaten giriş kaydı mevcut!";
                     return RedirectToAction("Attendance", new { id = employeeId });
                 }
 
-                // Yeni giriş kaydı oluştur
-                var attendance = new Attendance
-                {
-                    EmployeeId = employeeId,
-                    Date = today,
-                    CheckInTime = DateTime.Now,
-                    CheckOutTime = null
-                };
+                const string sqlInsert = @"
+                    INSERT INTO Attendances (EmployeeID, [Date], CheckInTime, CheckOutTime)
+                    VALUES ({0}, {1}, {2}, NULL)";
 
-                _context.Attendances.Add(attendance);
-                _context.SaveChanges();
+                _context.Database.ExecuteSqlRaw(sqlInsert, employeeId, today, DateTime.Now);
 
                 TempData["SuccessMessage"] = "Giriş kaydı başarıyla oluşturuldu!";
             }
@@ -563,7 +704,11 @@ namespace HR.Mvc.Controllers
         {
             try
             {
-                var attendance = _context.Attendances.Find(attendanceId);
+                const string sqlFind = @"SELECT * FROM Attendances WHERE AttendanceID = {0}";
+                var attendance = _context.Attendances
+                    .FromSqlRaw(sqlFind, attendanceId)
+                    .AsEnumerable()
+                    .FirstOrDefault();
 
                 if (attendance == null)
                 {
@@ -577,8 +722,12 @@ namespace HR.Mvc.Controllers
                     return RedirectToAction("Attendance", new { id = employeeId });
                 }
 
-                attendance.CheckOutTime = DateTime.Now;
-                _context.SaveChanges();
+                const string sqlUpdate = @"
+                    UPDATE Attendances
+                    SET CheckOutTime = {0}
+                    WHERE AttendanceID = {1}";
+
+                _context.Database.ExecuteSqlRaw(sqlUpdate, DateTime.Now, attendanceId);
 
                 TempData["SuccessMessage"] = "Çıkış kaydı başarıyla güncellendi!";
             }
@@ -592,10 +741,13 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Leaves(int id)
         {
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var emp = _context.Employees
+                .FromSqlRaw(sqlEmp, id)
                 .Include(e => e.LeaveRequests)
-                .ThenInclude(l => l.LeaveType)
-                .FirstOrDefault(e => e.EmployeeId == id);
+                    .ThenInclude(l => l.LeaveType)
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (emp == null) return NotFound();
 
@@ -604,9 +756,12 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Performance(int id)
         {
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var emp = _context.Employees
-                .Include(e => e.PerformanceReviewEmployees)  // EmployeeId ile ilişkililer
-                .FirstOrDefault(e => e.EmployeeId == id);
+                .FromSqlRaw(sqlEmp, id)
+                .Include(e => e.PerformanceReviewEmployees)
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (emp == null) return NotFound();
 
@@ -615,17 +770,16 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Documents(int id)
         {
+            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var emp = _context.Employees
+                .FromSqlRaw(sqlEmp, id)
                 .Include(e => e.Documents)
-                .FirstOrDefault(e => e.EmployeeId == id);
+                .AsEnumerable()
+                .FirstOrDefault();
 
             if (emp == null) return NotFound();
 
             return View(emp);
         }
-
     }
-
-
-
 }
