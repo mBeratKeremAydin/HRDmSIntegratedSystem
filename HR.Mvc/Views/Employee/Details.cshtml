@@ -4,21 +4,14 @@
     var userRole = Context.Session.GetString("UserRole");
     var sessionEmployeeId = Context.Session.GetInt32("EmployeeId");
     var isHRorAdmin = userRole == "HR" || userRole == "Admin";
-    var isDeptManager = userRole == "Department Manager" || userRole == "DepManager";
+    var isDeptManager = userRole == "Department Manager";
     var isSelfView = sessionEmployeeId == Model.EmployeeId;
-    
-    // returnUrl parametresini kontrol et
-    var returnUrl = Context.Request.Query["returnUrl"].ToString();
-    
-    // Geri dönüş URL'ini belirle
+
     string backUrl;
-    
-    // Eğer DepartmentManager kendi profilini görüntülüyorsa → Employee/Index
     if (isDeptManager && isSelfView)
     {
         backUrl = Url.Action("Index", "Employee");
     }
-    // Eğer DepartmentManager başka birinin profilini görüntülüyorsa → Department/Index
     else if (isDeptManager && !isSelfView)
     {
         backUrl = Url.Action("Index", "Department");
@@ -31,1093 +24,204 @@
     {
         backUrl = Url.Action("Index", "Employee");
     }
-
-    // Helper fonksiyon (güncellenmiş)
-    string GetDefaultBackUrl(bool isHR, bool isDept, bool isSelf)
-    {
-        // Eğer "Departman Hesabıma Git" butonundan geliyorsa
-        var fromDepartment = Context.Request.Query["from"].ToString() == "department";
-        
-        // Eğer kendi profilini görüntülüyorsa ve DepartmentManager ise
-        if (isSelf && isDept)
-        {
-            // Departman sayfasından gelmediyse Employee/Index
-            return fromDepartment ? Url.Action("Index", "Department") : Url.Action("Index", "Employee");
-        }
-        
-        if (isHR)
-        {
-            return Url.Action("Index", "HR");
-        }
-        
-        if (isDept)
-        {
-            return Url.Action("Index", "Department");
-        }
-        
-        return Url.Action("Index", "Employee");
-    }
 }
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Çalışan Detayı - @Model.FirstName @Model.LastName</title>
-
-    <!-- Bootstrap 5 -->
+    <title>Employee Details</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .details-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        /* Back Button */
-        .back-button {
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            color: #4a5568;
-            font-weight: 500;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-            .back-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-                color: #667eea;
-            }
-
-        /* Profile Card */
-        .profile-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 25px;
-            padding: 40px;
-            margin-bottom: 25px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
-            animation: fadeInUp 0.6s ease;
-        }
-
-        @@keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .profile-header {
-            display: flex;
-            gap: 30px;
-            align-items: start;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-
-        .profile-avatar {
-            width: 150px;
-            height: 150px;
-            border-radius: 25px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3.5rem;
-            color: white;
-            font-weight: 700;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-            flex-shrink: 0;
-        }
-
-        .profile-info {
-            flex: 1;
-            min-width: 250px;
-        }
-
-        .employee-name {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 10px;
-            line-height: 1.2;
-        }
-
-        .employee-title {
-            font-size: 1.3rem;
-            color: #718096;
-            margin-bottom: 15px;
-        }
-
-        .status-badges {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        .badge-custom {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .badge-active {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-
-        .badge-dept {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-        }
-
-        .badge-id {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            color: white;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .btn-action {
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 500;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .btn-edit {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-            .btn-edit:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-                color: white;
-            }
-
-        .btn-delete {
-            background: white;
-            border: 2px solid #fc5c65;
-            color: #fc5c65;
-        }
-
-            .btn-delete:hover {
-                background: #fc5c65;
-                color: white;
-                transform: translateY(-2px);
-                box-shadow: 0 10px 25px rgba(252, 92, 101, 0.3);
-            }
-
-        /* Info Sections */
-        .info-sections {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-        }
-
-        .info-section {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            animation: fadeInUp 0.6s ease;
-            animation-fill-mode: both;
-        }
-
-            .info-section:nth-child(1) {
-                animation-delay: 0.1s;
-            }
-
-            .info-section:nth-child(2) {
-                animation-delay: 0.2s;
-            }
-
-            .info-section:nth-child(3) {
-                animation-delay: 0.3s;
-            }
-
-        .section-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid;
-        }
-
-            .section-title.contact {
-                border-color: #667eea;
-            }
-
-            .section-title.work {
-                border-color: #38ef7d;
-            }
-
-            .section-title.manager {
-                border-color: #00f2fe;
-            }
-
-            .section-title i {
-                width: 35px;
-                height: 35px;
-                border-radius: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1.1rem;
-            }
-
-            .section-title.contact i {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }
-
-            .section-title.work i {
-                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                color: white;
-            }
-
-            .section-title.manager i {
-                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                color: white;
-            }
-
-        .info-row {
-            display: flex;
-            align-items: start;
-            padding: 15px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-            .info-row:last-child {
-                border-bottom: none;
-            }
-
-        .info-label {
-            font-weight: 600;
-            color: #4a5568;
-            min-width: 140px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-            .info-label i {
-                color: #a0aec0;
-                width: 20px;
-            }
-
-        .info-value {
-            color: #2d3748;
-            flex: 1;
-            word-break: break-word;
-        }
-
-            .info-value.empty {
-                color: #cbd5e0;
-                font-style: italic;
-            }
-
-        /* Manager Card */
-        .manager-card {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-radius: 15px;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .manager-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .manager-info {
-            flex: 1;
-        }
-
-        .manager-name {
-            font-weight: 600;
-            color: #2d3748;
-            font-size: 1.1rem;
-            margin-bottom: 5px;
-        }
-
-        .manager-role {
-            color: #718096;
-            font-size: 0.9rem;
-        }
-
-        /* Timeline */
-        .timeline-section {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            animation: fadeInUp 0.6s ease 0.4s both;
-            margin-top: 25px;
-        }
-
-        .timeline-item {
-            display: flex;
-            gap: 20px;
-            padding: 20px;
-            border-left: 3px solid #e2e8f0;
-            margin-left: 15px;
-            position: relative;
-        }
-
-            .timeline-item::before {
-                content: '';
-                position: absolute;
-                left: -9px;
-                top: 25px;
-                width: 15px;
-                height: 15px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border: 3px solid white;
-                box-shadow: 0 0 0 3px #e2e8f0;
-            }
-
-        .timeline-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            flex-shrink: 0;
-        }
-
-        .timeline-content {
-            flex: 1;
-        }
-
-        .timeline-title {
-            font-weight: 600;
-            color: #2d3748;
-            font-size: 1.1rem;
-            margin-bottom: 5px;
-        }
-
-        .timeline-date {
-            color: #718096;
-            font-size: 0.9rem;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #a0aec0;
-        }
-
-            .empty-state i {
-                font-size: 3rem;
-                margin-bottom: 15px;
-            }
-
-        /* Responsive */
-        @@media (max-width: 768px) {
-            .profile-header {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-            }
-
-            .employee-name {
-                font-size: 2rem;
-            }
-
-            .employee-title {
-                font-size: 1.1rem;
-            }
-
-            .profile-avatar {
-                width: 120px;
-                height: 120px;
-                font-size: 2.5rem;
-            }
-
-            .action-buttons {
-                justify-content: center;
-            }
-
-            .info-sections {
-                grid-template-columns: 1fr;
-            }
-
-            .info-label {
-                min-width: 100px;
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Print Styles */
-        @@media print {
-            body {
-                background: white;
-            }
-
-            .back-button,
-            .action-buttons {
-                display: none;
-            }
-
-            .profile-card,
-            .info-section {
-                box-shadow: none;
-                border: 1px solid #e2e8f0;
-            }
-        }
-    </style>
 </head>
-<body>
-    <div class="details-container">
-        <!-- Back Button -->
-        <a href="@backUrl" class="back-button">
-            <i class="fas fa-arrow-left"></i> Geri Dön
-        </a>
+<body class="bg-light p-4">
+    <div class="container">
+        <div class="d-flex justify-content-between mb-3">
+            <h2><i class="fas fa-user"></i> Employee Details</h2>
+            <a href="@backUrl" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
 
-        <!-- Alert Messages -->
         @if (TempData["ErrorMessage"] != null)
         {
-            <div class="alert alert-danger" style="border-radius: 20px; padding: 20px; margin-bottom: 25px; animation: slideDown 0.3s ease; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 20px rgba(252, 92, 101, 0.2);">
-                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #fc5c65;"></i>
-                <div style="flex: 1;">
-                    <strong>Yetki Hatası!</strong>
-                    <p style="margin: 5px 0 0 0;">@TempData["ErrorMessage"]</p>
-                </div>
-            </div>
+            <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
         }
-
         @if (TempData["SuccessMessage"] != null)
         {
-            <div class="alert alert-success" style="border-radius: 20px; padding: 20px; margin-bottom: 25px; animation: slideDown 0.3s ease; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 20px rgba(56, 239, 125, 0.2);">
-                <i class="fas fa-check-circle" style="font-size: 2rem; color: #38ef7d;"></i>
-                <div style="flex: 1;">
-                    <strong>Başarılı!</strong>
-                    <p style="margin: 5px 0 0 0;">@TempData["SuccessMessage"]</p>
-                </div>
-            </div>
+            <div class="alert alert-success">@TempData["SuccessMessage"]</div>
         }
 
         <!-- Profile Card -->
-        <div class="profile-card">
-            <div class="profile-header">
-                <div class="profile-avatar">
-                    @(Model.FirstName?.Substring(0, 1).ToUpper())@(Model.LastName?.Substring(0, 1).ToUpper())
-                </div>
-
-                <div class="profile-info">
-                    <h1 class="employee-name">@Model.FirstName @Model.LastName</h1>
-                    <div class="employee-title">@(Model.Job?.JobTitle ?? "Pozisyon Belirtilmemiş")</div>
-
-                    <div class="status-badges">
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">@Model.FirstName @Model.LastName</h4>
+                    <div>
                         @if (Model.IsActive)
                         {
-                            <span class="badge-custom badge-active">
-                                <i class="fas fa-check-circle"></i> Aktif
-                            </span>
+                            <span class="badge bg-success">Active</span>
                         }
                         else
                         {
-                            <span class="badge-custom" style="background: #e2e8f0; color: #718096;">
-                                <i class="fas fa-times-circle"></i> Pasif
-                            </span>
+                            <span class="badge bg-secondary">Inactive</span>
                         }
-
-                        @if (Model.Department != null)
-                        {
-                            <span class="badge-custom badge-dept">
-                                <i class="fas fa-building"></i> @Model.Department.DepartmentName
-                            </span>
-                        }
-
-                        <span class="badge-custom badge-id">
-                            <i class="fas fa-id-card"></i> ID: @Model.EmployeeId
-                        </span>
                     </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Employee ID:</strong> @Model.EmployeeId</p>
+                        <p><strong>Position:</strong> @(Model.Job?.JobTitle ?? "Not Specified")</p>
+                        <p><strong>Department:</strong> @(Model.Department?.DepartmentName ?? "Not Specified")</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Hire Date:</strong> @(Model.HireDate?.ToString("dd/MM/yyyy") ?? "Not Specified")</p>
+                        @if (Model.HireDate.HasValue)
+                        {
+                            var days = (DateOnly.FromDateTime(DateTime.Now).DayNumber - Model.HireDate.Value.DayNumber);
+                            <p><strong>Tenure:</strong> @days days</p>
+                        }
+                    </div>
+                </div>
 
-                    <div class="action-buttons">
-                        @if (isHRorAdmin)
-                        {
-                            <!-- Sadece HR ve Admin görebilir -->
-                            <a href="@Url.Action("Edit", "Employee", new { id = Model.EmployeeId })" class="btn-action btn-edit">
-                                <i class="fas fa-edit"></i> Düzenle
-                            </a>
-                            <button type="button" class="btn-action btn-delete" onclick="confirmDelete(@Model.EmployeeId, '@Model.FirstName @Model.LastName')">
-                                <i class="fas fa-trash"></i> Sil
-                            </button>
-                        }
-                        else if (isSelfView)
-                        {
-                            <!-- Employee kendi profilinde sadece bilgilendirme -->
-                            <div class="alert" style="background: linear-gradient(135deg, #fff3cd 0%, #fff8e1 100%); border-left: 4px solid #ffc107; color: #856404; padding: 15px; border-radius: 12px; margin-bottom: 0; display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-info-circle" style="font-size: 1.5rem;"></i>
-                                <div>
-                                    <strong>Bilgi:</strong> Kendi profilinizi görüntülüyorsunuz. Düzenleme yetkisi için yöneticinize başvurun.
-                                </div>
-                            </div>
-                            
-                            @* DepartmentManager ise Departman butonunu ekle *@
-                            @if (isDeptManager)
-                            {
-                                <a href="@Url.Action("Index", "Department")" class="btn-action" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-top: 10px;">
-                                    <i class="fas fa-building"></i> Departman Hesabıma Git
-                                </a>
-                            }
-                        }
-                        
-                        <button class="btn-action" style="background: white; border: 2px solid #e2e8f0; color: #4a5568;" onclick="window.print()">
-                            <i class="fas fa-print"></i> Yazdır
+                @if (isHRorAdmin)
+                {
+                    <div class="mt-3">
+                        <a href="@Url.Action("Edit", "Employee", new { id = Model.EmployeeId })" class="btn btn-warning">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-danger" onclick="confirmDelete(@Model.EmployeeId, '@Model.FirstName @Model.LastName')">
+                            <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Info Sections -->
-        <div class="info-sections">
-            <!-- Contact Information -->
-            <div class="info-section">
-                <h2 class="section-title contact">
-                    <i class="fas fa-address-card"></i>
-                    İletişim Bilgileri
-                </h2>
-
-                <div class="info-row">
-                    <div class="info-label">
-                        <i class="fas fa-envelope"></i> E-posta
-                    </div>
-                    <div class="info-value">
-                        @if (!string.IsNullOrEmpty(Model.Email))
-                        {
-                            <a href="mailto:@Model.Email" style="color: #667eea; text-decoration: none;">@Model.Email</a>
-                        }
-                        else
-                        {
-                            <span class="empty">Belirtilmemiş</span>
-                        }
-                    </div>
-                </div>
-
-                <div class="info-row">
-                    <div class="info-label">
-                        <i class="fas fa-phone"></i> Telefon
-                    </div>
-                    <div class="info-value">
-                        @if (!string.IsNullOrEmpty(Model.PhoneNumber))
-                        {
-                            <a href="tel:@Model.PhoneNumber" style="color: #667eea; text-decoration: none;">@Model.PhoneNumber</a>
-                        }
-                        else
-                        {
-                            <span class="empty">Belirtilmemiş</span>
-                        }
-                    </div>
-                </div>
-
-                <div class="info-row">
-                    <div class="info-label">
-                        <i class="fas fa-id-card-alt"></i> TC Kimlik No
-                    </div>
-                    <div class="info-value">
-                        @(Model.IdentityNumber ?? "Belirtilmemiş")
-                    </div>
-                </div>
-            </div>
-
-            <!-- Work Information -->
-            <div class="info-section">
-                <h2 class="section-title work">
-                    <i class="fas fa-briefcase"></i>
-                    İş Bilgileri
-                </h2>
-
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">
-                            <i class="fas fa-user-tie"></i> Pozisyon
-                        </label>
-                        <div class="info-value">
-                            @(Model.Job?.JobTitle ?? "Belirtilmemiş")
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">
-                            <i class="fas fa-building"></i> Departman
-                        </label>
-                        <div class="info-value">
-                            @(Model.Department?.DepartmentName ?? "Belirtilmemiş")
-                        </div>
-                    </div>
-
-                    @* Departman Yöneticisi Bilgisi *@
-                    @if (Model.Department?.Manager != null)
-                    {
-                        <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-user-shield"></i> Departman Yöneticisi
-                            </label>
-                            <div class="info-value">
-                                <div class="manager-badge" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 8px 15px; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px;">
-                                    <i class="fas fa-user-tie"></i>
-                                    @Model.Department.Manager.FirstName @Model.Department.Manager.LastName
-                                </div>
-                                @if (!string.IsNullOrEmpty(Model.Department.Manager.Email))
-                                {
-                                    <div style="font-size: 0.85rem; color: #718096; margin-top: 8px;">
-                                        <i class="fas fa-envelope"></i>
-                                        <a href="mailto:@Model.Department.Manager.Email" style="color: #667eea; text-decoration: none;">
-                                            @Model.Department.Manager.Email
-                                        </a>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    <div class="col-md-6">
-                        <label class="form-label">
-                            <i class="fas fa-calendar-check"></i> İşe Giriş
-                        </label>
-                        <div class="info-value">
-                            @if (Model.HireDate.HasValue)
-                            {
-                                @Model.HireDate.Value.ToString("dd MMMM yyyy")
-
-                                var days = (DateOnly.FromDateTime(DateTime.Now).DayNumber - Model.HireDate.Value.DayNumber);
-                                var years = days / 365;
-                                var months = (days % 365) / 30;
-
-                                <div style="font-size: 0.85rem; color: #718096; margin-top: 5px;">
-                                    @if (years > 0)
-                                    {
-                                        <span>@years yıl @months ay</span>
-                                    }
-                                    else if (months > 0)
-                                    {
-                                        <span>@months ay</span>
-                                    }
-                                    else
-                                    {
-                                        <span>@days gün</span>
-                                    }
-                                    <span> (Toplam: @days gün)</span>
-                                </div>
-                            }
-                            else
-                            {
-                                <span class="empty">Belirtilmemiş</span>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">
-                            <i class="fas fa-toggle-on"></i> Durum
-                        </label>
-                        <div class="info-value">
-                            @if (Model.IsActive)
-                            {
-                                <span style="color: #38ef7d; font-weight: 600;">
-                                    <i class="fas fa-check-circle"></i> Aktif Çalışan
-                                </span>
-                            }
-                            else
-                            {
-                                <span style="color: #cbd5e0; font-weight: 600;">
-                                    <i class="fas fa-times-circle"></i> Pasif Çalışan
-                                </span>
-                            }
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Manager Information -->
-            <div class="info-section">
-                <h2 class="section-title manager">
-                    <i class="fas fa-user-tie"></i>
-                    Yönetici Bilgisi
-                </h2>
-
-                @if (Model.Manager != null)
-                {
-                    <div class="manager-card">
-                        <div class="manager-avatar">
-                            @(Model.Manager.FirstName?.Substring(0, 1).ToUpper())@(Model.Manager.LastName?.Substring(0, 1).ToUpper())
-                        </div>
-                        <div class="manager-info">
-                            <div class="manager-name">@Model.Manager.FirstName @Model.Manager.LastName</div>
-                            <div class="manager-role">
-                                <i class="fas fa-briefcase"></i> @(Model.Manager.Job?.JobTitle ?? "Yönetici")
-                            </div>
-                            @if (!string.IsNullOrEmpty(Model.Manager.Email))
-                            {
-                                <div style="font-size: 0.85rem; color: #718096; margin-top: 8px;">
-                                    <i class="fas fa-envelope"></i>
-                                    <a href="mailto:@Model.Manager.Email" style="color: #667eea; text-decoration: none;">
-                                        @Model.Manager.Email
-                                    </a>
-                                </div>
-                            }
-                        </div>
-                    </div>
                 }
-                else
+                else if (isSelfView && isDeptManager)
                 {
-                    <div class="empty-state">
-                        <i class="fas fa-user-slash"></i>
-                        <p>Yönetici atanmamış</p>
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle"></i> You are viewing your own profile.
+                        <a href="@Url.Action("Index", "Department")" class="btn btn-sm btn-primary ms-2">
+                            <i class="fas fa-building"></i> Go to Department Account
+                        </a>
                     </div>
                 }
             </div>
         </div>
 
-        <!-- Timeline Section -->
-        @if (Model.HireDate.HasValue)
+        <!-- Contact Information -->
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white">
+                <h5><i class="fas fa-address-card"></i> Contact Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>
+                            <strong>Email:</strong>
+                            @if (!string.IsNullOrEmpty(Model.Email))
+                            {
+                                <a href="mailto:@Model.Email">@Model.Email</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not Specified</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>
+                            <strong>Phone:</strong>
+                            @if (!string.IsNullOrEmpty(Model.PhoneNumber))
+                            {
+                                <a href="tel:@Model.PhoneNumber">@Model.PhoneNumber</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not Specified</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Identity Number:</strong> @(Model.IdentityNumber ?? "Not Specified")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manager Information -->
+        @if (Model.Manager != null)
         {
-            <div class="timeline-section">
-                <h2 class="section-title" style="border-color: #667eea;">
-                    <i class="fas fa-history" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;"></i>
-                    Zaman Çizelgesi
-                </h2>
-
-                <div class="timeline-item">
-                    <div class="timeline-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">İşe Başlangıç</div>
-                        <div class="timeline-date">@Model.HireDate.Value.ToString("dd MMMM yyyy")</div>
-                    </div>
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-user-tie"></i> Manager Information</h5>
                 </div>
-
-                @if (Model.Department != null)
-                {
-                    <div class="timeline-item">
-                        <div class="timeline-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
-                            <i class="fas fa-building"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Departman Ataması</div>
-                            <div class="timeline-date">@Model.Department.DepartmentName</div>
-                        </div>
-                    </div>
-                }
-
-                @if (Model.Manager != null)
-                {
-                    <div class="timeline-item">
-                        <div class="timeline-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
-                            <i class="fas fa-user-tie"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Yönetici Ataması</div>
-                            <div class="timeline-date">@Model.Manager.FirstName @Model.Manager.LastName</div>
-                        </div>
-                    </div>
-                }
+                <div class="card-body">
+                    <p><strong>Name:</strong> @Model.Manager.FirstName @Model.Manager.LastName</p>
+                    <p><strong>Position:</strong> @(Model.Manager.Job?.JobTitle ?? "Manager")</p>
+                    @if (!string.IsNullOrEmpty(Model.Manager.Email))
+                    {
+                        <p><strong>Email:</strong> <a href="mailto:@Model.Manager.Email">@Model.Manager.Email</a></p>
+                    }
+                </div>
             </div>
         }
 
-        <!-- Employment Contract Section -->
+        <!-- Employment Contract -->
         @if (Model.EmploymentContracts != null && Model.EmploymentContracts.Any())
         {
             var activeContract = Model.EmploymentContracts.FirstOrDefault(c => c.IsActive);
-            var allContracts = Model.EmploymentContracts.OrderByDescending(c => c.StartDate).ToList();
-
-            <div class="info-sections" style="margin-top: 25px;">
-                @if (activeContract != null)
-                {
-                    <!-- Active Contract Card -->
-                    <div class="info-section" style="grid-column: 1 / -1;">
-                        <h2 class="section-title" style="border-color: #4facfe;">
-                            <i class="fas fa-file-contract" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;"></i>
-                            Aktif İş Sözleşmesi
-                        </h2>
-
-                        <div style="background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%); padding: 25px; border-radius: 15px; border-left: 5px solid #4facfe;">
-                            <div class="row g-4">
-                                <div class="col-md-3">
-                                    <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-                                        <div style="font-size: 0.85rem; color: #718096; margin-bottom: 8px; font-weight: 600;">
-                                            <i class="fas fa-file-signature"></i> Sözleşme Türü
-                                        </div>
-                                        <div style="font-size: 1.2rem; font-weight: 700; color: #2d3748;">
-                                            @activeContract.ContractType
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-3">
-                                    <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-                                        <div style="font-size: 0.85rem; color: #718096; margin-bottom: 8px; font-weight: 600;">
-                                            <i class="fas fa-calendar-plus"></i> Başlangıç Tarihi
-                                        </div>
-                                        <div style="font-size: 1.2rem; font-weight: 700, color: #2d3748;">
-                                            @activeContract.StartDate.ToString("dd MMM yyyy")
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-3">
-                                    <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-                                        <div style="font-size: 0.85rem; color: #718096; margin-bottom: 8px; font-weight: 600;">
-                                            <i class="fas fa-calendar-minus"></i> Bitiş Tarihi
-                                        </div>
-                                        <div style="font-size: 1.2rem; font-weight: 700, color: #2d3748;">
-                                            @if (activeContract.EndDate.HasValue)
-                                            {
-                                                @activeContract.EndDate.Value.ToString("dd MMM yyyy")
-                                            }
-                                            else
-                                            {
-                                                <span style="color: #38ef7d;">Belirsiz Süreli</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-3">
-                                    <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 12px; box-shadow: 0 2px 10px rgba(17, 153, 142, 0.3); color: white;">
-                                        <div style="font-size: 0.85rem; margin-bottom: 8px; font-weight: 600; opacity: 0.9;">
-                                            <i class="fas fa-money-bill-wave"></i> Maaş
-                                        </div>
-                                        <div style="font-size: 1.4rem; font-weight: 700;">
-                                            @activeContract.Salary.ToString("N2") TL
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.5);">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <div style="display: flex; align-items: center; gap: 10px;">
-                                            <i class="fas fa-hourglass-half" style="color: #4facfe; font-size: 1.2rem;"></i>
-                                            <div>
-                                                <div style="font-size: 0.85rem; color: #718096; font-weight: 600;">Sözleşme Süresi</div>
-                                                <div style="font-weight: 600; color: #2d3748;">
-                                                    @{
-                                                        var contractDays = activeContract.EndDate.HasValue 
-                                                            ? activeContract.EndDate.Value.DayNumber - activeContract.StartDate.DayNumber 
-                                                            : (DateOnly.FromDateTime(DateTime.Now).DayNumber - activeContract.StartDate.DayNumber);
-                                                        var contractYears = contractDays / 365;
-                                                        var contractMonths = (contractDays % 365) / 30;
-                                                    }
-                                                    @if (activeContract.EndDate.HasValue)
-                                                    {
-                                                        <span>@contractYears yıl @contractMonths ay (@contractDays gün)</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span>@contractYears yıl @contractMonths ay çalışıyor</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <div style="display: flex; align-items: center; gap: 10px;">
-                                            <i class="fas fa-check-circle" style="color: #38ef7d; font-size: 1.2rem;"></i>
-                                            <div>
-                                                <div style="font-size: 0.85rem; color: #718096; font-weight: 600;">Sözleşme Durumu</div>
-                                                <div style="font-weight: 600; color: #38ef7d;">
-                                                    <i class="fas fa-circle" style="font-size: 0.6rem;"></i> Aktif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            @if (activeContract != null)
+            {
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-file-contract"></i> Active Employment Contract</h5>
                     </div>
-                }
-
-                <!-- Contract History -->
-                @if (allContracts.Count > 1)
-                {
-                    <div class="info-section" style="grid-column: 1 / -1;">
-                        <h2 class="section-title" style="border-color: #718096;">
-                            <i class="fas fa-history" style="background: linear-gradient(135deg, #718096 0%, #4a5568 100%); color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;"></i>
-                            Sözleşme Geçmişi
-                        </h2>
-
-                        <div style="overflow-x: auto;">
-                            <table class="table" style="margin: 0;">
-                                <thead style="background: #f7fafc;">
-                                    <tr>
-                                        <th style="padding: 15px; font-weight: 600; color: #4a5568; border-bottom: 2px solid #e2e8f0;">
-                                            <i class="fas fa-calendar"></i> Başlangıç
-                                        </th>
-                                        <th style="padding: 15px; font-weight: 600; color: #4a5568; border-bottom: 2px solid #e2e8f0;">
-                                            <i class="fas fa-calendar-check"></i> Bitiş
-                                        </th>
-                                        <th style="padding: 15px; font-weight: 600; color: #4a5568; border-bottom: 2px solid #e2e8f0;">
-                                            <i class="fas fa-file-alt"></i> Tür
-                                        </th>
-                                        <th style="padding: 15px; font-weight: 600; color: #4a5568; border-bottom: 2px solid #e2e8f0;">
-                                            <i class="fas fa-money-bill"></i> Maaş
-                                        </th>
-                                        <th style="padding: 15px; font-weight: 600; color: #4a5568; border-bottom: 2px solid #e2e8f0;">
-                                            <i class="fas fa-info-circle"></i> Durum
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var contract in allContracts)
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <p><strong>Type:</strong> @activeContract.ContractType</p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Start Date:</strong> @activeContract.StartDate.ToString("dd/MM/yyyy")</p>
+                            </div>
+                            <div class="col-md-3">
+                                <p>
+                                    <strong>End Date:</strong>
+                                    @if (activeContract.EndDate.HasValue)
                                     {
-                                        <tr style="border-bottom: 1px solid #e2e8f0;">
-                                            <td style="padding: 15px; color: #2d3748;">
-                                                @contract.StartDate.ToString("dd MMM yyyy")
-                                            </td>
-                                            <td style="padding: 15px; color: #2d3748;">
-                                                @if (contract.EndDate.HasValue)
-                                                {
-                                                    @contract.EndDate.Value.ToString("dd MMM yyyy")
-                                                }
-                                                else
-                                                {
-                                                    <span style="color: #a0aec0; font-style: italic;">Devam Ediyor</span>
-                                                }
-                                            </td>
-                                            <td style="padding: 15px;">
-                                                <span style="background: #e2e8f0; padding: 5px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #4a5568;">
-                                                    @contract.ContractType
-                                                </span>
-                                            </td>
-                                            <td style="padding: 15px; font-weight: 600; color: #2d3748;">
-                                                @contract.Salary.ToString("N2") TL
-                                            </td>
-                                            <td style="padding: 15px;">
-                                                @if (contract.IsActive)
-                                                {
-                                                    <span style="color: #38ef7d; font-weight: 600;">
-                                                        <i class="fas fa-check-circle"></i> Aktif
-                                                    </span>
-                                                }
-                                                else
-                                                {
-                                                    <span style="color: #cbd5e0;">
-                                                        <i class="fas fa-times-circle"></i> Pasif
-                                                    </span>
-                                                }
-                                            </td>
-                                        </tr>
+                                        @activeContract.EndDate.Value.ToString("dd/MM/yyyy")
                                     }
-                                </tbody>
-                            </table>
+                                    else
+                                    {
+                                        <span class="text-success">Indefinite</span>
+                                    }
+                                </p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Salary:</strong> @activeContract.Salary.ToString("N2") TL</p>
+                            </div>
                         </div>
-                    </div>
-                }
-            </div>
-        }
-        else
-        {
-            <!-- No Contract Message -->
-            <div class="info-sections" style="margin-top: 25px;">
-                <div class="info-section" style="grid-column: 1 / -1;">
-                    <h2 class="section-title" style="border-color: #4facfe;">
-                        <i class="fas fa-file-contract" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;"></i>
-                        İş Sözleşmesi
-                    </h2>
-
-                    <div class="empty-state">
-                        <i class="fas fa-file-contract"></i>
-                        <p>Bu çalışan için henüz iş sözleşmesi kaydı bulunmamaktadır.</p>
                     </div>
                 </div>
-            </div>
+            }
         }
     </div>
 
     <!-- Delete Modal -->
     <div class="modal fade" id="deleteModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius: 20px; border: none;">
-                <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 20px 25px;">
-                    <h5 class="modal-title">
-                        <i class="fas fa-exclamation-triangle text-danger me-2"></i>Silme Onayı
-                    </h5>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" style="padding: 25px;">
-                    <p><strong id="employeeName"></strong> adlı çalışanı silmek istediğinizden emin misiniz?</p>
-                    <p class="text-muted mb-0">Bu işlem geri alınamaz ve tüm ilgili veriler silinecektir.</p>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong id="employeeName"></strong>?</p>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 20px 25px;">
-                    <button type="button" class="btn-action" style="background: white; border: 2px solid #e2e8f0; color: #4a5568;" data-bs-dismiss="modal">
-                        İptal
-                    </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <form id="deleteForm" method="post" action="@Url.Action("Delete", "Employee", new { id = Model.EmployeeId })" style="display: inline;">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn-action" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none;">
-                            <i class="fas fa-trash"></i> Sil
-                        </button>
+                        <button type="submit" class="btn btn-danger">Delete</button>
                     </form>
                 </div>
             </div>

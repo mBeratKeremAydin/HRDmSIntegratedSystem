@@ -3,400 +3,84 @@
     Layout = null;
 }
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Yeni Çalışan Ekle</title>
-
+    <title>Add New Employee</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .create-container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .back-button {
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            color: #4a5568;
-            font-weight: 500;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-            .back-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-                color: #667eea;
-            }
-
-        .form-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 25px;
-            padding: 40px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
-            animation: fadeInUp 0.6s ease;
-        }
-
-        @@keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .form-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .form-title {
-            font-size: 2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
-
-        .form-subtitle {
-            color: #718096;
-            font-size: 1rem;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid;
-        }
-
-            .section-header.personal {
-                border-color: #667eea;
-            }
-
-            .section-header.work {
-                border-color: #38ef7d;
-            }
-
-            .section-header.user {
-                border-color: #fa709a;
-            }
-
-        .section-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            color: white;
-        }
-
-        .section-header.personal .section-icon {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .section-header.work .section-icon {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        .section-header.user .section-icon {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-
-        .section-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #2d3748;
-            margin: 0;
-        }
-
-        .form-section {
-            margin-bottom: 35px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #4a5568;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-            .form-label i {
-                color: #a0aec0;
-            }
-
-        .required {
-            color: #fc5c65;
-        }
-
-        .form-control, .form-select {
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px 16px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-        }
-
-            .form-control:focus, .form-select:focus {
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-                outline: none;
-            }
-
-        .form-check {
-            padding: 15px;
-            background: #f7fafc;
-            border-radius: 12px;
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s ease;
-        }
-
-            .form-check:hover {
-                border-color: #667eea;
-                background: #f0f4ff;
-            }
-
-        .form-check-input:checked {
-            background-color: #667eea;
-            border-color: #667eea;
-        }
-
-        .form-check-label {
-            font-weight: 500;
-            color: #2d3748;
-            cursor: pointer;
-        }
-
-        .user-section {
-            background: linear-gradient(135deg, #fff5f7 0%, #fffbea 100%);
-            padding: 25px;
-            border-radius: 15px;
-            margin-top: 20px;
-            border: 2px solid #fee;
-            display: none;
-        }
-
-            .user-section.active {
-                display: block;
-                animation: slideDown 0.3s ease;
-            }
-
-        @@keyframes slideDown {
-            from {
-                opacity: 0;
-                max-height: 0;
-            }
-
-            to {
-                opacity: 1;
-                max-height: 500px;
-            }
-        }
-
-        .btn-submit {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 14px 40px;
-            border-radius: 12px;
-            border: none;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-            .btn-submit:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-            }
-
-        .btn-cancel {
-            background: white;
-            color: #4a5568;
-            padding: 14px 40px;
-            border-radius: 12px;
-            border: 2px solid #e2e8f0;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-            .btn-cancel:hover {
-                border-color: #cbd5e0;
-                transform: translateY(-2px);
-            }
-
-        .text-danger {
-            font-size: 0.85rem;
-            margin-top: 5px;
-        }
-
-        .alert {
-            border-radius: 12px;
-            border: none;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-        }
-
-        @@media (max-width: 768px) {
-            .form-card {
-                padding: 25px;
-            }
-
-            .form-title {
-                font-size: 1.5rem;
-            }
-
-            .section-title {
-                font-size: 1.1rem;
-            }
-        }
-    </style>
 </head>
-<body>
-    <div class="create-container">
-        <a href="@Url.Action("Index", "HR")" class="back-button">
-            <i class="fas fa-arrow-left"></i> Geri Dön
-        </a>
+<body class="bg-light p-4">
+    <div class="container">
+        <div class="d-flex justify-content-between mb-3">
+            <h2><i class="fas fa-user-plus"></i> Add New Employee</h2>
+            <a href="@Url.Action("Index", "HR")" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
 
-        <div class="form-card">
-            <div class="form-header">
-                <h1 class="form-title">
-                    <i class="fas fa-user-plus"></i> Yeni Çalışan Ekle
-                </h1>
-                <p class="form-subtitle">Çalışan bilgilerini eksiksiz doldurun</p>
+        @if (ViewData.ModelState.ErrorCount > 0)
+        {
+            <div class="alert alert-danger">
+                <strong>Error!</strong> Please check the form.
+                @Html.ValidationSummary(true)
             </div>
+        }
 
-            @if (ViewData.ModelState.ErrorCount > 0)
-            {
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Hata!</strong> Lütfen formu kontrol edin.
-                    @Html.ValidationSummary(true, "", new { @class = "mb-0 mt-2" })
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+
+            <!-- Personal Information -->
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-user"></i> Personal Information</h5>
                 </div>
-            }
-
-            <form asp-action="Create" method="post">
-                @Html.AntiForgeryToken()
-
-                <!-- Personal Information Section -->
-                <div class="form-section">
-                    <div class="section-header personal">
-                        <div class="section-icon">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h3 class="section-title">Kişisel Bilgiler</h3>
-                    </div>
-
+                <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-user"></i> Ad <span class="required">*</span>
-                            </label>
-                            <input asp-for="FirstName" class="form-control" placeholder="Adınızı girin" required />
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input asp-for="FirstName" class="form-control" required />
                             <span asp-validation-for="FirstName" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-user"></i> Soyad <span class="required">*</span>
-                            </label>
-                            <input asp-for="LastName" class="form-control" placeholder="Soyadınızı girin" required />
+                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input asp-for="LastName" class="form-control" required />
                             <span asp-validation-for="LastName" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-id-card"></i> TC Kimlik No <span class="required">*</span>
-                            </label>
-                            <input asp-for="IdentityNumber" class="form-control" placeholder="11 haneli TC kimlik numarası" maxlength="11" required />
+                            <label class="form-label">Identity Number <span class="text-danger">*</span></label>
+                            <input asp-for="IdentityNumber" class="form-control" maxlength="11" required />
                             <span asp-validation-for="IdentityNumber" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-envelope"></i> E-posta <span class="required">*</span>
-                            </label>
-                            <input asp-for="Email" type="email" class="form-control" placeholder="ornek@email.com" required />
+                            <label class="form-label">Email <span class="text-danger">*</span></label>
+                            <input asp-for="Email" type="email" class="form-control" required />
                             <span asp-validation-for="Email" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-phone"></i> Telefon
-                            </label>
-                            <input asp-for="PhoneNumber" class="form-control" placeholder="+90 (5XX) XXX XX XX" />
+                            <label class="form-label">Phone Number</label>
+                            <input asp-for="PhoneNumber" class="form-control" />
                             <span asp-validation-for="PhoneNumber" class="text-danger"></span>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Work Information Section -->
-                <div class="form-section">
-                    <div class="section-header work">
-                        <div class="section-icon">
-                            <i class="fas fa-briefcase"></i>
-                        </div>
-                        <h3 class="section-title">İş Bilgileri</h3>
-                    </div>
-
+            <!-- Work Information -->
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-briefcase"></i> Work Information</h5>
+                </div>
+                <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-calendar-alt"></i> İşe Giriş Tarihi <span class="required">*</span>
-                            </label>
+                            <label class="form-label">Hire Date <span class="text-danger">*</span></label>
                             <input asp-for="HireDate" type="date" class="form-control" required />
                             <span asp-validation-for="HireDate" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-building"></i> Departman <span class="required">*</span>
-                            </label>
+                            <label class="form-label">Department <span class="text-danger">*</span></label>
                             <select asp-for="DepartmentId" class="form-select" required>
-                                <option value="">Departman Seçin</option>
+                                <option value="">Select Department</option>
                                 @foreach (var dept in ViewBag.Departments)
                                 {
                                     <option value="@dept.DepartmentId">@dept.DepartmentName</option>
@@ -404,13 +88,10 @@
                             </select>
                             <span asp-validation-for="DepartmentId" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-user-tie"></i> Pozisyon <span class="required">*</span>
-                            </label>
+                            <label class="form-label">Position <span class="text-danger">*</span></label>
                             <select asp-for="JobId" class="form-select" required>
-                                <option value="">Pozisyon Seçin</option>
+                                <option value="">Select Position</option>
                                 @foreach (var job in ViewBag.Jobs)
                                 {
                                     <option value="@job.JobId">@job.JobTitle</option>
@@ -418,268 +99,134 @@
                             </select>
                             <span asp-validation-for="JobId" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-user-shield"></i> Yönetici
-                            </label>
-                            <select asp-for="ManagerId" class="form-select">
-                                <option value="">Yönetici Seçin (Opsiyonel)</option>
-                                @foreach (var manager in (IEnumerable<SelectListItem>)ViewBag.Managers)
-                                {
-                                    <option value="@manager.Value">@manager.Text</option>
-                                }
-                            </select>
-                            <span asp-validation-for="ManagerId" class="text-danger"></span>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="form-check">
+                            <div class="form-check mt-4">
                                 <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
-                                <label class="form-check-label" for="IsActive">
-                                    <i class="fas fa-check-circle text-success me-1"></i> Aktif Çalışan
-                                </label>
+                                <label class="form-check-label">Active Employee</label>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- User Account Section -->
-                <div class="form-section">
-                    <div class="section-header user">
-                        <div class="section-icon">
-                            <i class="fas fa-user-lock"></i>
-                        </div>
-                        <h3 class="section-title">Kullanıcı Hesabı <span class="required">*</span></h3>
+            <!-- User Account -->
+            <div class="card mb-3">
+                <div class="card-header bg-warning">
+                    <h5><i class="fas fa-user-lock"></i> User Account (Required)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> User account is mandatory for every employee.
                     </div>
-
-                    <div class="alert alert-info" style="margin-bottom: 20px;">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Her çalışan için kullanıcı hesabı zorunludur. Kullanıcı adı ve şifre belirleyin.
-                    </div>
-
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-user-circle"></i> Kullanıcı Adı <span class="required">*</span>
-                            </label>
-                            <input type="text" name="username" id="username" class="form-control" placeholder="Kullanıcı adı" required />
+                            <label class="form-label">Username <span class="text-danger">*</span></label>
+                            <input type="text" name="username" id="username" class="form-control" required />
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fas fa-lock"></i> Şifre <span class="required">*</span>
-                            </label>
-                            <input type="password" name="userPassword" id="userPassword" class="form-control" placeholder="Güçlü bir şifre" required />
-                        </div>
-
-                        <div class="col-12">
-                            <small class="text-muted">
-                                <i class="fas fa-shield-alt me-1"></i>
-                                E-posta adresi otomatik olarak kullanıcı hesabına atanacaktır.
-                            </small>
+                            <label class="form-label">Password <span class="text-danger">*</span></label>
+                            <input type="password" name="userPassword" class="form-control" required />
                         </div>
                     </div>
-
-                    <!-- Hidden field: createUser her zaman true -->
                     <input type="hidden" name="createUser" value="true" />
                 </div>
+            </div>
 
-                <!-- Employment Contract Section -->
-                <div class="form-section">
-                    <div class="section-header" style="border-color: #4facfe;">
-                        <div class="section-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                            <i class="fas fa-file-contract"></i>
-                        </div>
-                        <h3 class="section-title">İş Sözleşmesi</h3>
-                    </div>
-
+            <!-- Employment Contract -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-file-contract"></i> Employment Contract (Optional)</h5>
+                </div>
+                <div class="card-body">
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="createContractCheck" name="createContract" value="true">
                         <label class="form-check-label" for="createContractCheck">
-                            <i class="fas fa-file-signature text-info me-1"></i> Bu çalışan için iş sözleşmesi oluştur
+                            Create employment contract for this employee
                         </label>
                     </div>
 
-                    <div class="user-section" id="contractSection">
+                    <div id="contractSection" style="display:none;">
                         <div class="row g-3">
-                            <div class="col-12">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    İş sözleşmesi oluşturulduğunda, çalışanın maaş ve sözleşme bilgileri sisteme kaydedilecektir.
-                                </div>
-                            </div>
-
                             <div class="col-md-6">
-                                <label class="form-label">
-                                    <i class="fas fa-calendar-plus"></i> Sözleşme Başlangıç Tarihi <span class="required">*</span>
-                                </label>
+                                <label class="form-label">Contract Start Date <span class="text-danger">*</span></label>
                                 <input type="date" name="contractStartDate" id="contractStartDate" class="form-control" />
                             </div>
-
                             <div class="col-md-6">
-                                <label class="form-label">
-                                    <i class="fas fa-calendar-minus"></i> Sözleşme Bitiş Tarihi
-                                </label>
-                                <input type="date" name="contractEndDate" id="contractEndDate" class="form-control" />
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Belirsiz süreli sözleşme için boş bırakabilirsiniz
-                                </small>
+                                <label class="form-label">Contract End Date</label>
+                                <input type="date" name="contractEndDate" class="form-control" />
+                                <small class="text-muted">Leave empty for indefinite contract</small>
                             </div>
-
                             <div class="col-md-6">
-                                <label class="form-label">
-                                    <i class="fas fa-money-bill-wave"></i> Maaş (TL) <span class="required">*</span>
-                                </label>
-                                <input type="number" name="contractSalary" id="contractSalary" class="form-control" placeholder="Örn: 15000" step="0.01" min="0" />
+                                <label class="form-label">Salary (TL) <span class="text-danger">*</span></label>
+                                <input type="number" name="contractSalary" id="contractSalary" class="form-control" step="0.01" min="0" />
                             </div>
-
                             <div class="col-md-6">
-                                <label class="form-label">
-                                    <i class="fas fa-file-alt"></i> Sözleşme Türü
-                                </label>
-                                <select name="contractType" id="contractType" class="form-select">
-                                    <option value="Belirsiz Süreli">Belirsiz Süreli</option>
-                                    <option value="Belirli Süreli">Belirli Süreli</option>
-                                    <option value="Kısmi Zamanlı">Kısmi Zamanlı</option>
-                                    <option value="Proje Bazlı">Proje Bazlı</option>
-                                    <option value="Stajyer">Stajyer</option>
+                                <label class="form-label">Contract Type</label>
+                                <select name="contractType" class="form-select">
+                                    <option value="Belirsiz Süreli">Indefinite Term</option>
+                                    <option value="Belirli Süreli">Fixed Term</option>
+                                    <option value="Kısmi Zamanlı">Part Time</option>
+                                    <option value="Proje Bazlı">Project Based</option>
+                                    <option value="Stajyer">Internship</option>
                                 </select>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="alert" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #4facfe; color: #2d3748;">
-                                    <strong><i class="fas fa-lightbulb me-2"></i>Bilgi:</strong>
-                                    <ul class="mb-0 mt-2">
-                                        <li>Sözleşme başlangıç tarihi genellikle işe giriş tarihi ile aynıdır</li>
-                                        <li>Bitiş tarihi belirtilmezse, belirsiz süreli sözleşme oluşturulur</li>
-                                        <li>Maaş bilgisi gizli tutulacaktır</li>
-                                    </ul>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Form Actions -->
-                <div class="d-flex gap-3 justify-content-end mt-4">
-                    <a href="@Url.Action("Index", "HR")" class="btn-cancel">
-                        <i class="fas fa-times"></i> İptal
-                    </a>
-                    <button type="submit" class="btn-submit">
-                        <i class="fas fa-save"></i> Kaydet
-                    </button>
-                </div>
-            </form>
-        </div>
+            <!-- Submit Buttons -->
+            <div class="d-flex gap-2 justify-content-end">
+                <a href="@Url.Action("Index", "HR")" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </form>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Contract section toggle
         document.getElementById('createContractCheck').addEventListener('change', function() {
-            const contractSection = document.getElementById('contractSection');
-            const startDateInput = document.getElementById('contractStartDate');
-            const salaryInput = document.getElementById('contractSalary');
+            const section = document.getElementById('contractSection');
+            const startDate = document.getElementById('contractStartDate');
+            const salary = document.getElementById('contractSalary');
 
             if (this.checked) {
-                contractSection.classList.add('active');
-                startDateInput.required = true;
-                salaryInput.required = true;
-                
-                // İşe giriş tarihi varsa, sözleşme başlangıç tarihine otomatik doldur
-                const hireDateInput = document.querySelector('input[name="HireDate"]');
-                if (hireDateInput.value && !startDateInput.value) {
-                    startDateInput.value = hireDateInput.value;
+                section.style.display = 'block';
+                startDate.required = true;
+                salary.required = true;
+
+                // Auto-fill start date from hire date
+                const hireDate = document.querySelector('input[name="HireDate"]').value;
+                if (hireDate && !startDate.value) {
+                    startDate.value = hireDate;
                 }
             } else {
-                contractSection.classList.remove('active');
-                startDateInput.required = false;
-                salaryInput.required = false;
-                startDateInput.value = '';
-                document.getElementById('contractEndDate').value = '';
-                salaryInput.value = '';
-                document.getElementById('contractType').selectedIndex = 0;
+                section.style.display = 'none';
+                startDate.required = false;
+                salary.required = false;
             }
         });
 
-        // İşe giriş tarihi değiştiğinde sözleşme başlangıç tarihini güncelle
-        document.querySelector('input[name="HireDate"]').addEventListener('change', function() {
-            const contractCheck = document.getElementById('createContractCheck');
-            const startDateInput = document.getElementById('contractStartDate');
-            
-            if (contractCheck.checked && this.value) {
-                startDateInput.value = this.value;
-            }
-        });
-
-        // Auto-generate username suggestion from name
+        // Auto-generate username
         const firstNameInput = document.querySelector('input[name="FirstName"]');
         const lastNameInput = document.querySelector('input[name="LastName"]');
         const usernameInput = document.getElementById('username');
 
         function suggestUsername() {
-            if (firstNameInput.value && lastNameInput.value) {
-                const firstName = firstNameInput.value.toLowerCase()
-                    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
-                const lastName = lastNameInput.value.toLowerCase()
-                    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
-
-                if (usernameInput.value === '') {
-                    usernameInput.value = firstName + '.' + lastName;
-                }
+            if (firstNameInput.value && lastNameInput.value && !usernameInput.value) {
+                const firstName = firstNameInput.value.toLowerCase().replace(/[^a-z]/g, '');
+                const lastName = lastNameInput.value.toLowerCase().replace(/[^a-z]/g, '');
+                usernameInput.value = firstName + '.' + lastName;
             }
         }
 
         firstNameInput.addEventListener('blur', suggestUsername);
         lastNameInput.addEventListener('blur', suggestUsername);
-
-        // Form validation
-        document.querySelector('form').addEventListener('submit', function(e) {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('userPassword').value;
-
-            if (!username || !password) {
-                e.preventDefault();
-                alert('Kullanıcı adı ve şifre zorunludur!');
-                return false;
-            }
-
-            if (password.length < 6) {
-                e.preventDefault();
-                alert('Şifre en az 6 karakter olmalıdır!');
-                return false;
-            }
-
-            // Contract validation
-            const createContract = document.getElementById('createContractCheck')?.checked;
-            if (createContract) {
-                const startDate = document.getElementById('contractStartDate').value;
-                const salary = document.getElementById('contractSalary').value;
-
-                if (!startDate || !salary) {
-                    e.preventDefault();
-                    alert('Sözleşme oluşturmak için başlangıç tarihi ve maaş bilgisi gereklidir!');
-                    return false;
-                }
-
-                if (parseFloat(salary) <= 0) {
-                    e.preventDefault();
-                    alert('Maaş 0\'dan büyük olmalıdır!');
-                    return false;
-                }
-
-                const endDate = document.getElementById('contractEndDate').value;
-                if (endDate && endDate <= startDate) {
-                    e.preventDefault();
-                    alert('Sözleşme bitiş tarihi, başlangıç tarihinden sonra olmalıdır!');
-                    return false;
-                }
-            }
-        });
     </script>
 </body>
 </html>

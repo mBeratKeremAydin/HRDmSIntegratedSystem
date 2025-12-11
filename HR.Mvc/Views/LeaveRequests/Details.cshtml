@@ -3,899 +3,142 @@
     Layout = null;
 }
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>İzin Talebi Detayı - #@Model.RequestId</title>
-
+    <title>Leave Request Details</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .details-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .back-button {
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            color: #4a5568;
-            font-weight: 500;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-            .back-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-                color: #fa709a;
-            }
-
-        .header-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 25px;
-            padding: 30px;
-            margin-bottom: 25px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
-            animation: fadeInUp 0.6s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        @@keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 300px;
-            height: 300px;
-            background: linear-gradient(135deg, rgba(250, 112, 154, 0.1) 0%, rgba(254, 225, 64, 0.1) 100%);
-            border-radius: 50%;
-            transform: translate(30%, -30%);
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .header-left {
-            flex: 1;
-            min-width: 300px;
-        }
-
-        .request-id {
-            font-size: 0.9rem;
-            color: #718096;
-            margin-bottom: 10px;
-        }
-
-        .request-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .status-badge-large {
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 1rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-            .status-badge-large.pending {
-                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-                color: white;
-            }
-
-            .status-badge-large.approved {
-                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                color: white;
-            }
-
-            .status-badge-large.rejected {
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                color: white;
-            }
-
-        .action-buttons {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .btn-action {
-            padding: 12px 24px;
-            border-radius: 12px;
-            border: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .btn-approve {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-
-            .btn-approve:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 20px rgba(56, 239, 125, 0.4);
-            }
-
-        .btn-reject {
-            background: white;
-            border: 2px solid #fc5c65;
-            color: #fc5c65;
-        }
-
-            .btn-reject:hover {
-                background: #fc5c65;
-                color: white;
-                transform: translateY(-2px);
-            }
-
-        .btn-print {
-            background: white;
-            border: 2px solid #e2e8f0;
-            color: #4a5568;
-        }
-
-            .btn-print:hover {
-                border-color: #cbd5e0;
-                transform: translateY(-2px);
-            }
-
-        .content-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 25px;
-        }
-
-        .main-section, .side-section {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-
-        .info-card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            animation: fadeInUp 0.6s ease;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid;
-        }
-
-            .card-header.employee {
-                border-color: #667eea;
-            }
-
-            .card-header.dates {
-                border-color: #38ef7d;
-            }
-
-            .card-header.reason {
-                border-color: #fa709a;
-            }
-
-            .card-header.approval {
-                border-color: #4facfe;
-            }
-
-        .card-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            color: white;
-        }
-
-        .card-header.employee .card-icon {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .card-header.dates .card-icon {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        .card-header.reason .card-icon {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-
-        .card-header.approval .card-icon {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .card-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #2d3748;
-            margin: 0;
-        }
-
-        .employee-section {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-radius: 15px;
-        }
-
-        .employee-avatar-large {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            font-weight: 700;
-            flex-shrink: 0;
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .employee-details {
-            flex: 1;
-        }
-
-        .employee-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 5px;
-        }
-
-        .employee-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #718096;
-            font-size: 0.95rem;
-        }
-
-            .meta-item i {
-                width: 16px;
-                color: #a0aec0;
-            }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-            .info-row:last-child {
-                border-bottom: none;
-            }
-
-        .info-label {
-            color: #718096;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 500;
-        }
-
-            .info-label i {
-                width: 20px;
-                color: #a0aec0;
-            }
-
-        .info-value {
-            color: #2d3748;
-            font-weight: 600;
-            text-align: right;
-        }
-
-        .date-range-display {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 20px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .date-box {
-            padding: 20px;
-            background: #f7fafc;
-            border-radius: 15px;
-            text-align: center;
-            border: 2px solid #e2e8f0;
-        }
-
-        .date-label {
-            font-size: 0.85rem;
-            color: #718096;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .date-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 5px;
-        }
-
-        .date-day {
-            font-size: 0.9rem;
-            color: #a0aec0;
-        }
-
-        .date-arrow {
-            font-size: 2rem;
-            color: #cbd5e0;
-        }
-
-        .duration-badge {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 15px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .reason-box {
-            padding: 20px;
-            background: #f7fafc;
-            border-radius: 15px;
-            border-left: 4px solid #fa709a;
-            line-height: 1.8;
-            color: #2d3748;
-        }
-
-        .leave-type-display {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 20px;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            border-radius: 15px;
-            color: white;
-        }
-
-        .leave-type-icon {
-            width: 60px;
-            height: 60px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-        }
-
-        .leave-type-details {
-            flex: 1;
-        }
-
-        .leave-type-name {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .leave-type-days {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-
-        .timeline-card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-        }
-
-        .timeline-item {
-            display: flex;
-            gap: 20px;
-            padding: 20px 0;
-            border-left: 3px solid #e2e8f0;
-            margin-left: 22px;
-            padding-left: 30px;
-            position: relative;
-        }
-
-            .timeline-item::before {
-                content: '';
-                position: absolute;
-                left: -12px;
-                top: 25px;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-                border: 3px solid white;
-                box-shadow: 0 0 0 3px #e2e8f0;
-            }
-
-        .timeline-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .timeline-content {
-            flex: 1;
-        }
-
-        .timeline-title {
-            font-weight: 600;
-            color: #2d3748;
-            font-size: 1.1rem;
-            margin-bottom: 5px;
-        }
-
-        .timeline-date {
-            color: #718096;
-            font-size: 0.9rem;
-        }
-
-        .approval-box {
-            padding: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .approver-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .approver-details {
-            flex: 1;
-        }
-
-        .approver-name {
-            font-weight: 700;
-            color: #2d3748;
-            font-size: 1.1rem;
-            margin-bottom: 3px;
-        }
-
-        .approver-role {
-            color: #718096;
-            font-size: 0.9rem;
-        }
-
-        .empty-approval {
-            text-align: center;
-            padding: 40px;
-            color: #a0aec0;
-        }
-
-            .empty-approval i {
-                font-size: 3rem;
-                margin-bottom: 15px;
-            }
-
-        @@media (max-width: 992px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @@media (max-width: 768px) {
-            .request-title {
-                font-size: 1.5rem;
-            }
-
-            .header-content {
-                flex-direction: column;
-            }
-
-            .employee-section {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .date-range-display {
-                grid-template-columns: 1fr;
-            }
-
-            .date-arrow {
-                transform: rotate(90deg);
-            }
-        }
-
-        @@media print {
-            body {
-                background: white;
-            }
-
-            .back-button,
-            .action-buttons {
-                display: none;
-            }
-
-            .header-card,
-            .info-card {
-                box-shadow: none;
-                border: 1px solid #e2e8f0;
-            }
-        }
-    </style>
 </head>
-<body>
-    <div class="details-container">
-        <a href="@Url.Action("Index")" class="back-button">
-            <i class="fas fa-arrow-left"></i> İzin Listesine Dön
-        </a>
+<body class="bg-light p-4">
+    <div class="container" style="max-width: 1000px;">
+        <div class="d-flex justify-content-between mb-3">
+            <h2><i class="fas fa-calendar-check"></i> Leave Request Details #@Model.RequestId</h2>
+            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
 
         @{
             var days = Model.EndDate.DayNumber - Model.StartDate.DayNumber + 1;
-            var statusClass = Model.Status == "Approved" ? "approved" : Model.Status == "Pending" ? "pending" : "rejected";
-            var statusText = Model.Status == "Approved" ? "Onaylandı" : Model.Status == "Pending" ? "İnceleniyor" : "Reddedildi";
-            var statusIcon = Model.Status == "Approved" ? "check-circle" : Model.Status == "Pending" ? "clock" : "times-circle";
         }
 
-        <div class="header-card">
-            <div class="header-content">
-                <div class="header-left">
-                    <div class="request-id">
-                        İzin Talebi #@Model.RequestId
-                    </div>
-                    <h1 class="request-title">
-                        <i class="fas fa-calendar-check"></i>
-                        @(Model.LeaveType?.TypeName ?? "İzin Talebi")
-                    </h1>
-                    <span class="status-badge-large @statusClass">
-                        <i class="fas fa-@statusIcon"></i>
-                        @statusText
-                    </span>
-                </div>
-
-                @if (Model.Status == "Pending")
-                {
-                    <div class="action-buttons">
-                        <form method="post" asp-action="Approve" asp-route-id="@Model.RequestId" style="display: inline;">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn-action btn-approve" onclick="return confirm('Bu izin talebini onaylamak istediğinizden emin misiniz?')">
-                                <i class="fas fa-check"></i> Onayla
-                            </button>
-                        </form>
-                        <form method="post" asp-action="Reject" asp-route-id="@Model.RequestId" style="display: inline;">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn-action btn-reject" onclick="return confirm('Bu izin talebini reddetmek istediğinizden emin misiniz?')">
-                                <i class="fas fa-times"></i> Reddet
-                            </button>
-                        </form>
-                    </div>
-                }
-                <button class="btn-action btn-print" onclick="window.print()">
-                    <i class="fas fa-print"></i> Yazdır
-                </button>
+        <!-- Status Card -->
+        <div class="card mb-3">
+            <div class="card-header bg-@(Model.Status == "Approved" ? "success" : Model.Status == "Pending" ? "warning" : "danger") text-white">
+                <h4 class="mb-0">
+                    @if (Model.Status == "Approved")
+                    {
+                        <i class="fas fa-check-circle"></i> <span>Approved</span>
+                    }
+                    else if (Model.Status == "Pending")
+                    {
+                        <i class="fas fa-clock"></i> <span>Pending</span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-times-circle"></i> <span>Rejected</span>
+                    }
+                </h4>
             </div>
         </div>
 
-        <div class="content-grid">
-            <div class="main-section">
-                <!-- Employee Information -->
-                <div class="info-card">
-                    <div class="card-header employee">
-                        <div class="card-icon">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h2 class="card-title">Çalışan Bilgileri</h2>
-                    </div>
+        <!-- Actions -->
+        @if (Model.Status == "Pending")
+        {
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="post" asp-action="Approve" asp-route-id="@Model.RequestId" style="display: inline;">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Approve this request?')">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                    </form>
+                    <form method="post" asp-action="Reject" asp-route-id="@Model.RequestId" style="display: inline;">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Reject this request?')">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
 
-                    <div class="employee-section">
-                        <div class="employee-avatar-large">
-                            @(Model.Employee?.FirstName?.Substring(0, 1).ToUpper())@(Model.Employee?.LastName?.Substring(0, 1).ToUpper())
-                        </div>
-                        <div class="employee-details">
-                            <div class="employee-name">
-                                @Model.Employee?.FirstName @Model.Employee?.LastName
-                            </div>
-                            <div class="employee-meta">
-                                <div class="meta-item">
-                                    <i class="fas fa-id-badge"></i>
-                                    Çalışan ID: @Model.EmployeeId
-                                </div>
-                                @if (Model.Employee?.Department != null)
-                                {
-                                    <div class="meta-item">
-                                        <i class="fas fa-building"></i>
-                                        @Model.Employee.Department.DepartmentName
-                                    </div>
-                                }
-                                @if (Model.Employee?.Job != null)
-                                {
-                                    <div class="meta-item">
-                                        <i class="fas fa-briefcase"></i>
-                                        @Model.Employee.Job.JobTitle
-                                    </div>
-                                }
-                                @if (!string.IsNullOrEmpty(Model.Employee?.Email))
-                                {
-                                    <div class="meta-item">
-                                        <i class="fas fa-envelope"></i>
-                                        @Model.Employee.Email
-                                    </div>
-                                }
-                            </div>
-                        </div>
+        <div class="row g-3">
+            <!-- Employee Info -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5><i class="fas fa-user"></i> Employee Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Name:</strong> @Model.Employee?.FirstName @Model.Employee?.LastName</p>
+                        <p><strong>ID:</strong> @Model.EmployeeId</p>
+                        <p><strong>Department:</strong> @(Model.Employee?.Department?.DepartmentName ?? "N/A")</p>
+                        <p><strong>Position:</strong> @(Model.Employee?.Job?.JobTitle ?? "N/A")</p>
+                        <p><strong>Email:</strong> @(Model.Employee?.Email ?? "N/A")</p>
                     </div>
                 </div>
-
-                <!-- Date Information -->
-                <div class="info-card">
-                    <div class="card-header dates">
-                        <div class="card-icon">
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                        <h2 class="card-title">İzin Tarihleri</h2>
-                    </div>
-
-                    <div class="date-range-display">
-                        <div class="date-box">
-                            <div class="date-label">
-                                <i class="fas fa-calendar-plus"></i> Başlangıç
-                            </div>
-                            <div class="date-value">@Model.StartDate.ToString("dd MMM")</div>
-                            <div class="date-day">@Model.StartDate.ToString("yyyy")</div>
-                        </div>
-
-                        <div class="date-arrow">
-                            <i class="fas fa-arrow-right"></i>
-                        </div>
-
-                        <div class="date-box">
-                            <div class="date-label">
-                                <i class="fas fa-calendar-minus"></i> Bitiş
-                            </div>
-                            <div class="date-value">@Model.EndDate.ToString("dd MMM")</div>
-                            <div class="date-day">@Model.EndDate.ToString("yyyy")</div>
-                        </div>
-                    </div>
-
-                    <div class="duration-badge">
-                        <i class="fas fa-hourglass-half"></i>
-                        <span>Toplam @days Gün</span>
-                    </div>
-
-                    <div style="margin-top: 20px;">
-                        <div class="info-row">
-                            <div class="info-label">
-                                <i class="fas fa-calendar-week"></i> Başlangıç Günü
-                            </div>
-                            <div class="info-value">
-                                @Model.StartDate.ToString("dddd, dd MMMM yyyy")
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">
-                                <i class="fas fa-calendar-check"></i> Bitiş Günü
-                            </div>
-                            <div class="info-value">
-                                @Model.EndDate.ToString("dddd, dd MMMM yyyy")
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Reason -->
-                @if (!string.IsNullOrEmpty(Model.Reason))
-                {
-                    <div class="info-card">
-                        <div class="card-header reason">
-                            <div class="card-icon">
-                                <i class="fas fa-comment-alt"></i>
-                            </div>
-                            <h2 class="card-title">İzin Nedeni</h2>
-                        </div>
-
-                        <div class="reason-box">
-                            @Model.Reason
-                        </div>
-                    </div>
-                }
             </div>
 
-            <div class="side-section">
-                <!-- Leave Type -->
-                <div class="info-card">
-                    <div class="leave-type-display">
-                        <div class="leave-type-icon">
-                            <i class="fas fa-umbrella-beach"></i>
-                        </div>
-                        <div class="leave-type-details">
-                            <div class="leave-type-name">
-                                @(Model.LeaveType?.TypeName ?? "İzin Türü Belirtilmemiş")
-                            </div>
-                            @if (Model.LeaveType?.DaysAllowed != null)
+            <!-- Leave Details -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-calendar-alt"></i> Leave Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Leave Type:</strong> @(Model.LeaveType?.TypeName ?? "N/A")</p>
+                        <p><strong>Start Date:</strong> @Model.StartDate.ToString("dd/MM/yyyy")</p>
+                        <p><strong>End Date:</strong> @Model.EndDate.ToString("dd/MM/yyyy")</p>
+                        <p><strong>Duration:</strong> @days days</p>
+                        <p><strong>Status:</strong>
+                            @if (Model.Status == "Approved")
                             {
-                                <div class="leave-type-days">
-                                    Yıllık Hak: @Model.LeaveType.DaysAllowed gün
-                                </div>
+                                <span class="badge bg-success">Approved</span>
                             }
-                        </div>
+                            else if (Model.Status == "Pending")
+                            {
+                                <span class="badge bg-warning">Pending</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Rejected</span>
+                            }
+                        </p>
                     </div>
                 </div>
-
-                <!-- Request Details -->
-                <div class="info-card">
-                    <div class="card-header">
-                        <div class="card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                            <i class="fas fa-info-circle"></i>
-                        </div>
-                        <h2 class="card-title">Talep Detayları</h2>
-                    </div>
-
-                    <div class="info-row">
-                        <div class="info-label">
-                            <i class="fas fa-hashtag"></i> Talep ID
-                        </div>
-                        <div class="info-value">#@Model.RequestId</div>
-                    </div>
-
-                    <div class="info-row">
-                        <div class="info-label">
-                            <i class="fas fa-info-circle"></i> Durum
-                        </div>
-                        <div class="info-value">
-                            <span class="status-badge-large @statusClass" style="padding: 6px 12px; font-size: 0.85rem;">
-                                <i class="fas fa-@statusIcon"></i>
-                                @statusText
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="info-row">
-                        <div class="info-label">
-                            <i class="fas fa-calendar-day"></i> İzin Süresi
-                        </div>
-                        <div class="info-value">@days Gün</div>
-                    </div>
-                </div>
-
-                <!-- Approval Information -->
-                @if (Model.ApprovedByUser != null || Model.Status != "Pending")
-                {
-                    <div class="info-card">
-                        <div class="card-header approval">
-                            <div class="card-icon">
-                                <i class="fas fa-user-check"></i>
-                            </div>
-                            <h2 class="card-title">Onay Bilgileri</h2>
-                        </div>
-
-                        @if (Model.ApprovedByUser != null)
-                        {
-                            <div class="approval-box">
-                                <div class="approver-avatar">
-                                    @(Model.ApprovedByUser.Username?.Substring(0, 1).ToUpper())
-                                </div>
-                                <div class="approver-details">
-                                    <div class="approver-name">@Model.ApprovedByUser.Username</div>
-                                    <div class="approver-role">
-                                        @if (Model.Status == "Approved")
-                                        {
-                                            <i class="fas fa-check-circle" style="color: #38ef7d;"></i>
-                                            <span>Onaylayan Yetkili</span>
-                                        }
-                                        else if (Model.Status == "Rejected")
-                                        {
-                                            <i class="fas fa-times-circle" style="color: #fc5c65;"></i>
-                                            <span>Reddeden Yetkili</span>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                        else if (Model.Status == "Pending")
-                        {
-                            <div class="empty-approval">
-                                <i class="fas fa-hourglass-half"></i>
-                                <p style="margin: 0; color: #718096;">Onay bekleniyor</p>
-                            </div>
-                        }
-                    </div>
-                }
             </div>
+
+            <!-- Reason -->
+            @if (!string.IsNullOrEmpty(Model.Reason))
+            {
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <h5><i class="fas fa-comment-alt"></i> Reason</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>@Model.Reason</p>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Approval Info -->
+            @if (Model.ApprovedByUser != null)
+            {
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h5><i class="fas fa-user-check"></i> Approval Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>@(Model.Status == "Approved" ? "Approved" : "Rejected") By:</strong> @Model.ApprovedByUser.Username</p>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

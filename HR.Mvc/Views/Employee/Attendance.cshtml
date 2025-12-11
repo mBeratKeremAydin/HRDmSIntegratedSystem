@@ -3,375 +3,43 @@
     Layout = null;
 }
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Devamsızlık Kayıtları - @Model.FirstName @Model.LastName</title>
-
+    <title>Attendance Records</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container-custom {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .back-button {
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            color: #4a5568;
-            font-weight: 500;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .back-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            color: #667eea;
-        }
-
-        .header-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 25px;
-            padding: 30px;
-            margin-bottom: 25px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
-            animation: fadeInUp 0.6s ease;
-        }
-
-        @@keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .employee-info {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .employee-avatar {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-            color: white;
-            font-weight: 700;
-        }
-
-        .employee-details h2 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 5px;
-        }
-
-        .employee-meta {
-            color: #718096;
-            font-size: 0.9rem;
-        }
-
-        .btn-checkin {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            border: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-checkin:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(56, 239, 125, 0.4);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            animation: fadeInUp 0.6s ease;
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-            color: white;
-            margin-bottom: 15px;
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            color: #718096;
-            font-size: 0.95rem;
-        }
-
-        .table-card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            animation: fadeInUp 0.6s ease 0.2s both;
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .table-custom {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 10px;
-        }
-
-        .table-custom thead th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            font-weight: 600;
-            text-align: left;
-            border: none;
-        }
-
-        .table-custom thead th:first-child {
-            border-radius: 12px 0 0 12px;
-        }
-
-        .table-custom thead th:last-child {
-            border-radius: 0 12px 12px 0;
-        }
-
-        .table-custom tbody tr {
-            background: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-        }
-
-        .table-custom tbody tr:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-custom tbody td {
-            padding: 18px 15px;
-            border: none;
-            color: #2d3748;
-        }
-
-        .table-custom tbody td:first-child {
-            border-radius: 12px 0 0 12px;
-        }
-
-        .table-custom tbody td:last-child {
-            border-radius: 0 12px 12px 0;
-        }
-
-        .badge-status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .badge-present {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-
-        .badge-incomplete {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            color: white;
-        }
-
-        .btn-checkout {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-checkout:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
-        }
-
-        .alert {
-            border-radius: 12px;
-            border: none;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            animation: slideDown 0.3s ease;
-        }
-
-        @@keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #a0aec0;
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-        }
-
-        @@media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .employee-info {
-                flex-direction: column;
-            }
-
-            .table-custom {
-                font-size: 0.85rem;
-            }
-        }
-    </style>
 </head>
-<body>
-    <div class="container-custom">
+<body class="bg-light p-4">
+    <div class="container">
         @{
             var userRole = Context.Session.GetString("UserRole");
             var isHRorAdmin = userRole == "HR" || userRole == "Admin";
             var backUrl = isHRorAdmin ? Url.Action("Index", "HR") : Url.Action("Index", "Employee");
         }
 
-        <a href="@backUrl" class="back-button">
-            <i class="fas fa-arrow-left"></i> Geri Dön
-        </a>
+        <div class="d-flex justify-content-between mb-3">
+            <h2><i class="fas fa-calendar-check"></i> Attendance Records</h2>
+            <a href="@backUrl" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
 
         @if (TempData["ErrorMessage"] != null)
         {
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                <strong>Hata!</strong> @TempData["ErrorMessage"]
-            </div>
+            <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
         }
-
         @if (TempData["SuccessMessage"] != null)
         {
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle me-2"></i>
-                <strong>Başarılı!</strong> @TempData["SuccessMessage"]
-            </div>
+            <div class="alert alert-success">@TempData["SuccessMessage"]</div>
         }
 
-        <div class="header-card">
-            <div class="header-content">
-                <div class="employee-info">
-                    <!-- ... mevcut kod ... -->
-                </div>
-
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    @if (Context.Session.GetString("UserRoles")?.Contains("DepartmentManager") == true ||
-                                        Context.Session.GetString("UserRoles")?.Contains("DepManager") == true)
-                    {
-                        <a href="@Url.Action("Index", "Department")" class="btn-action" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-                            <i class="fas fa-building"></i> Departman Hesabım
-                        </a>
-                    }
-
-                    @if (!isHRorAdmin)
-                    {
-                        @* Mevcut Giriş/Çıkış butonları *@
-                    }
-                </div>
+        <!-- Employee Info -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h4>@Model.FirstName @Model.LastName</h4>
+                <small>@(Model.Job?.JobTitle ?? "No Position") | @(Model.Department?.DepartmentName ?? "No Department")</small>
             </div>
-                </div>
-
+            <div class="card-body">
                 @if (!isHRorAdmin)
                 {
                     var today = DateOnly.FromDateTime(DateTime.Now);
@@ -379,24 +47,25 @@
 
                     @if (todayAttendance == null)
                     {
-                        <form asp-action="CheckIn" asp-controller="Employee" method="post" style="display: inline;">
+                        <form asp-action="CheckIn" asp-controller="Employee" method="post">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="employeeId" value="@Model.EmployeeId" />
-                            <button type="submit" class="btn-checkin">
-                                <i class="fas fa-sign-in-alt"></i> Giriş Yap
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-sign-in-alt"></i> Check In
                             </button>
                         </form>
                     }
                     else
                     {
-                        <div class="alert alert-success" style="margin: 0;">
-                            <i class="fas fa-check-circle"></i> Bugün giriş yaptınız: <strong>@todayAttendance.CheckInTime?.ToString("HH:mm")</strong>
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> You checked in today at: <strong>@todayAttendance.CheckInTime?.ToString("HH:mm")</strong>
                         </div>
                     }
                 }
             </div>
         </div>
 
+        <!-- Statistics -->
         @{
             var totalDays = Model.Attendances?.Count ?? 0;
             var completedDays = Model.Attendances?.Count(a => a.CheckOutTime != null) ?? 0;
@@ -406,59 +75,64 @@
             var thisMonthDays = Model.Attendances?.Count(a => a.Date.HasValue && a.Date.Value.Month == currentMonth && a.Date.Value.Year == currentYear) ?? 0;
         }
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <i class="fas fa-calendar-check"></i>
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-calendar-check fa-3x text-primary mb-2"></i>
+                        <h3>@totalDays</h3>
+                        <p class="text-muted">Total Days</p>
+                    </div>
                 </div>
-                <div class="stat-value">@totalDays</div>
-                <div class="stat-label">Toplam Devam</div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                    <i class="fas fa-check-double"></i>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-check-double fa-3x text-success mb-2"></i>
+                        <h3>@completedDays</h3>
+                        <p class="text-muted">Full Days</p>
+                    </div>
                 </div>
-                <div class="stat-value">@completedDays</div>
-                <div class="stat-label">Tam Gün</div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                    <i class="fas fa-clock"></i>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-clock fa-3x text-warning mb-2"></i>
+                        <h3>@incompleteDays</h3>
+                        <p class="text-muted">Incomplete</p>
+                    </div>
                 </div>
-                <div class="stat-value">@incompleteDays</div>
-                <div class="stat-label">Çıkış Yapılmamış</div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                    <i class="fas fa-calendar-day"></i>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-calendar-day fa-3x text-info mb-2"></i>
+                        <h3>@thisMonthDays</h3>
+                        <p class="text-muted">This Month</p>
+                    </div>
                 </div>
-                <div class="stat-value">@thisMonthDays</div>
-                <div class="stat-label">Bu Ay</div>
             </div>
         </div>
 
-        <div class="table-card">
-            <h3 class="section-title">
-                <i class="fas fa-history"></i> Devamsızlık Geçmişi
-            </h3>
-
-            @if (Model.Attendances != null && Model.Attendances.Any())
-            {
-                <div style="overflow-x: auto;">
-                    <table class="table-custom">
+        <!-- Attendance Table -->
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5><i class="fas fa-history"></i> Attendance History</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.Attendances != null && Model.Attendances.Any())
+                {
+                    <table class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th><i class="fas fa-calendar"></i> Tarih</th>
-                                <th><i class="fas fa-sign-in-alt"></i> Giriş Saati</th>
-                                <th><i class="fas fa-sign-out-alt"></i> Çıkış Saati</th>
-                                <th><i class="fas fa-clock"></i> Çalışma Süresi</th>
-                                <th><i class="fas fa-info-circle"></i> Durum</th>
+                                <th>Date</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Duration</th>
+                                <th>Status</th>
                                 @if (!isHRorAdmin)
                                 {
-                                    <th><i class="fas fa-cog"></i> İşlem</th>
+                                    <th>Action</th>
                                 }
                             </tr>
                         </thead>
@@ -466,56 +140,46 @@
                             @foreach (var attendance in Model.Attendances.OrderByDescending(a => a.Date))
                             {
                                 <tr>
-                                    <td>
-                                        <strong>@(attendance.Date?.ToString("dd MMMM yyyy") ?? "N/A")</strong>
-                                    </td>
+                                    <td>@(attendance.Date?.ToString("dd/MM/yyyy") ?? "N/A")</td>
                                     <td>
                                         @if (attendance.CheckInTime != null)
                                         {
-                                            <span style="color: #11998e; font-weight: 600;">
-                                                <i class="fas fa-clock"></i> @attendance.CheckInTime.Value.ToString("HH:mm")
-                                            </span>
+                                            <span class="text-success">@attendance.CheckInTime.Value.ToString("HH:mm")</span>
                                         }
                                         else
                                         {
-                                            <span style="color: #cbd5e0;">-</span>
+                                            <span class="text-muted">-</span>
                                         }
                                     </td>
                                     <td>
                                         @if (attendance.CheckOutTime != null)
                                         {
-                                            <span style="color: #667eea; font-weight: 600;">
-                                                <i class="fas fa-clock"></i> @attendance.CheckOutTime.Value.ToString("HH:mm")
-                                            </span>
+                                            <span class="text-primary">@attendance.CheckOutTime.Value.ToString("HH:mm")</span>
                                         }
                                         else
                                         {
-                                            <span style="color: #fa709a;">Çıkış yapılmamış</span>
+                                            <span class="text-warning">Not checked out</span>
                                         }
                                     </td>
                                     <td>
                                         @if (attendance.CheckInTime != null && attendance.CheckOutTime != null)
                                         {
                                             var duration = attendance.CheckOutTime.Value - attendance.CheckInTime.Value;
-                                            <strong>@($"{(int)duration.TotalHours}s {duration.Minutes}dk")</strong>
+                                            <span>@($"{(int)duration.TotalHours}h {duration.Minutes}m")</span>
                                         }
                                         else
                                         {
-                                            <span style="color: #cbd5e0;">-</span>
+                                            <span class="text-muted">-</span>
                                         }
                                     </td>
                                     <td>
                                         @if (attendance.CheckOutTime != null)
                                         {
-                                            <span class="badge-status badge-present">
-                                                <i class="fas fa-check-circle"></i> Tam Gün
-                                            </span>
+                                            <span class="badge bg-success">Complete</span>
                                         }
                                         else
                                         {
-                                            <span class="badge-status badge-incomplete">
-                                                <i class="fas fa-clock"></i> Devam Ediyor
-                                            </span>
+                                            <span class="badge bg-warning">Ongoing</span>
                                         }
                                     </td>
                                     @if (!isHRorAdmin)
@@ -527,14 +191,10 @@
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="attendanceId" value="@attendance.AttendanceId" />
                                                     <input type="hidden" name="employeeId" value="@Model.EmployeeId" />
-                                                    <button type="submit" class="btn-checkout" onclick="return confirm('Çıkış yapmak istediğinizden emin misiniz?')">
-                                                        <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                                                    <button type="submit" class="btn btn-sm btn-info" onclick="return confirm('Are you sure you want to check out?')">
+                                                        <i class="fas fa-sign-out-alt"></i> Check Out
                                                     </button>
                                                 </form>
-                                            }
-                                            else
-                                            {
-                                                <span style="color: #cbd5e0;">-</span>
                                             }
                                         </td>
                                     }
@@ -542,19 +202,17 @@
                             }
                         </tbody>
                     </table>
-                </div>
-            }
-            else
-            {
-                <div class="empty-state">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>Henüz Devamsızlık Kaydı Yok</h3>
-                    <p>Giriş yaparak ilk kaydınızı oluşturun</p>
-                </div>
-            }
+                }
+                else
+                {
+                    <div class="text-center p-5">
+                        <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                        <h4>No Attendance Records Yet</h4>
+                        <p class="text-muted">Check in to create your first record</p>
+                    </div>
+                }
+            </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
