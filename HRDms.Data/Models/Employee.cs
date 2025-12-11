@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace HRDms.Data.Models;
@@ -32,16 +31,12 @@ public partial class Employee
 
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
-    [ValidateNever]
-
     public virtual Department Department { get; set; } = null!;
 
     public virtual ICollection<Department> Departments { get; set; } = new List<Department>();
 
-    [ValidateNever]
     public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
 
-    [ValidateNever]
     public virtual ICollection<EmploymentContract> EmploymentContracts { get; set; } = new List<EmploymentContract>();
 
     public virtual ICollection<Employee> InverseManager { get; set; } = new List<Employee>();

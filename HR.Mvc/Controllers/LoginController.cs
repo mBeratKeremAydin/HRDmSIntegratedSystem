@@ -97,7 +97,7 @@ namespace HR.Mvc.Controllers
                 return "HR";
             
             if (roles.Contains("Department Manager") && roles.Contains("Employee"))
-                return "DepartmentManager";
+                return "Department Manager";
             
             if (roles.Contains("Employee") && !roles.Contains("Department Manager"))
                 return "Employee";
@@ -115,7 +115,7 @@ namespace HR.Mvc.Controllers
             {
                 "Admin" => RedirectToAction("Index", "Admin"), 
                 "HR" => RedirectToAction("Index", "HR"),
-                "DepartmentManager" => RedirectToAction("Index", "Department"), // DepartmentManager kendi ekranına
+                "Department Manager" => RedirectToAction("Index", "Department"), // DepartmentManager kendi ekranına
                 "DepManager" => RedirectToAction("Index", "Department"),
                 "Employee" => RedirectToAction("Index", "Employee"),
                 _ => RedirectToAction("Index", "Employee") // Varsayılan

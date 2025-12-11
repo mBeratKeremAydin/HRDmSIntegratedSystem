@@ -292,6 +292,7 @@ namespace HR.Mvc.Controllers
         }
 
         [HttpGet]
+
         public IActionResult Edit(int id)
         {
             var employeeId = HttpContext.Session.GetInt32("EmployeeId");
@@ -361,11 +362,25 @@ namespace HR.Mvc.Controllers
         Employee model,
         bool updateContract = false,
         int? contractId = null,
-         DateOnly? contractStartDate = null,
+        DateOnly? contractStartDate = null,
         DateOnly? contractEndDate = null,
         decimal? contractSalary = null,
-    string? contractType = null)
+        string? contractType = null)
         {
+            // ✅ EKLE: Navigation property'leri ModelState'den temizle
+            ModelState.Remove("Department");
+            ModelState.Remove("Job");
+            ModelState.Remove("Manager");
+            ModelState.Remove("User");
+            ModelState.Remove("Documents");
+            ModelState.Remove("EmploymentContracts");
+            ModelState.Remove("Attendances");
+            ModelState.Remove("Departments");
+            ModelState.Remove("InverseManager");
+            ModelState.Remove("LeaveRequests");
+            ModelState.Remove("PerformanceReviewEmployees");
+            ModelState.Remove("PerformanceReviewReviewers");
+
             // DEBUG: ModelState hatalarını logla
             if (!ModelState.IsValid)
             {

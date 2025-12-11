@@ -7,7 +7,7 @@ public partial class PerformanceReview
 {
     public int ReviewId { get; set; }
 
-    public int EmployeeId { get; set; }
+    public int? EmployeeId { get; set; }
 
     public int? ReviewerId { get; set; }
 
@@ -17,7 +17,7 @@ public partial class PerformanceReview
 
     public string? Notes { get; set; }
 
-    public virtual Employee? Employee { get; set; } = null!;
+    public virtual Employee? Employee { get; set; }
 
     public virtual Employee? Reviewer { get; set; }
 }

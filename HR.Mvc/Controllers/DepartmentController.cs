@@ -27,7 +27,7 @@ public class DepartmentController : Controller
         List<Department> departments;
 
         // DepartmentManager ise sadece yöneticisi olduğu departmanları göster
-        if (userRole == "DepartmentManager" || userRole == "DepManager")
+        if (userRole == "Department Manager" || userRole == "DepManager")
         {
             departments = _context.Departments
                 .Include(d => d.Location)
@@ -69,7 +69,7 @@ public class DepartmentController : Controller
             return NotFound();
 
         // DepartmentManager ise sadece kendi departmanını düzenleyebilir
-        if ((userRole == "DepartmentManager" || userRole == "DepManager") && dep.ManagerId != employeeId)
+        if ((userRole == "Department Manager" || userRole == "DepManager") && dep.ManagerId != employeeId)
         {
             TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanı düzenleyebilirsiniz!";
             return RedirectToAction("Index");
@@ -105,6 +105,12 @@ public class DepartmentController : Controller
     {
         var userRole = HttpContext.Session.GetString("UserRole");
         var isHRorAdmin = userRole == "HR" || userRole == "Admin";
+
+        // ✅ DEPARTMENT İÇİN: Navigation property'leri ModelState'den temizle
+        ModelState.Remove("Location");
+        ModelState.Remove("Manager");
+        ModelState.Remove("Employees");
+        ModelState.Remove("DocumentPermissions");
 
         if (!ModelState.IsValid)
         {
@@ -144,7 +150,7 @@ public class DepartmentController : Controller
                 if (newManagerEmployee != null && newManagerEmployee.UserId.HasValue)
                 {
                     int depManagerRoleId = _context.Roles
-                        .Where(r => r.RoleName == "DepartmentManager" || r.RoleName == "Department Manager")
+                        .Where(r => r.RoleName == "Department Manager" || r.RoleName == "Department Manager")
                         .Select(r => r.RoleId)
                         .FirstOrDefault();
 
@@ -177,7 +183,7 @@ public class DepartmentController : Controller
                 if (oldManagerEmployee != null && oldManagerEmployee.UserId.HasValue)
                 {
                     int depManagerRoleId = _context.Roles
-                        .Where(r => r.RoleName == "DepartmentManager" || r.RoleName == "Department Manager")
+                        .Where(r => r.RoleName == "Department Manager" || r.RoleName == "Department Manager")
                         .Select(r => r.RoleId)
                         .FirstOrDefault();
 
@@ -295,7 +301,7 @@ public class DepartmentController : Controller
             return NotFound();
 
         // DepartmentManager ise sadece kendi departmanının çalışanlarını görebilir
-        var isDeptManager = userRole == "DepartmentManager" || userRole == "DepManager";
+        var isDeptManager = userRole == "Department Manager" || userRole == "Department Manager";
         if (isDeptManager && department.ManagerId != employeeId)
         {
             TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanın çalışanlarını görüntüleyebilirsiniz!";

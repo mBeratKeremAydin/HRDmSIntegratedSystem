@@ -1,21 +1,21 @@
-﻿@model List<HRDms.Data.Models.Job>
+﻿@model List<HRDms.Data.Models.Employee>
 @{
     Layout = null;
 }
 <!DOCTYPE html>
 <html>
 <head>
-    <title>İş Pozisyonları</title>
+    <title>HR Çalışanları</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-light p-4">
     <div class="container">
         <div class="d-flex justify-content-between mb-3">
-            <h2><i class="fas fa-briefcase"></i> İş Pozisyonları</h2>
+            <h2><i class="fas fa-user-tie"></i> HR Çalışanları</h2>
             <div>
-                <a href="@Url.Action("CreateJob")" class="btn btn-success">
-                    <i class="fas fa-plus"></i> Yeni Ekle
+                <a href="@Url.Action("CreateHREmployee")" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Yeni HR Ekle
                 </a>
                 <a href="@Url.Action("Index")" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Geri
@@ -38,25 +38,35 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Pozisyon Adı</th>
-                            <th>Min Maaş</th>
-                            <th>Max Maaş</th>
-                            <th>İşlemler</th>
+                            <th>Ad Soyad</th>
+                            <th>Email</th>
+                            <th>Telefon</th>
+                            <th>Pozisyon</th>
+                            <th>Durum</th>
+                            <th>İşlem</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var job in Model)
+                        @foreach (var emp in Model)
                         {
                             <tr>
-                                <td>@job.JobId</td>
-                                <td>@job.JobTitle</td>
-                                <td>@(job.MinSalary?.ToString("N2") ?? "-") TL</td>
-                                <td>@(job.MaxSalary?.ToString("N2") ?? "-") TL</td>
+                                <td>@emp.EmployeeId</td>
+                                <td>@emp.FirstName @emp.LastName</td>
+                                <td>@emp.Email</td>
+                                <td>@emp.PhoneNumber</td>
+                                <td>@(emp.Job?.JobTitle ?? "N/A")</td>
                                 <td>
-                                    <a href="@Url.Action("EditJob", new { id = job.JobId })" class="btn btn-sm btn-warning">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form method="post" asp-action="DeleteJob" asp-route-id="@job.JobId"
+                                    @if (emp.IsActive)
+                                    {
+                                        <span class="badge bg-success">Aktif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Pasif</span>
+                                    }
+                                </td>
+                                <td>
+                                    <form method="post" asp-action="DeleteHREmployee" asp-route-id="@emp.EmployeeId"
                                           onsubmit="return confirm('Silmek istediğinize emin misiniz?')" style="display:inline;">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-danger">
