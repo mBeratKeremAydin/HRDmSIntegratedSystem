@@ -5,7 +5,7 @@
     var isHRorAdmin = userRole == "HR" || userRole == "Admin";
     var backUrl = isHRorAdmin ? Url.Action("Index", "HR") : Url.Action("Index", "Employee");
     var userRoles = Context.Session.GetString("UserRoles") ?? "";
-    var isDeptManager = userRoles.Contains("DepartmentManager") || userRoles.Contains("DepManager");
+    var isDeptManager = userRoles.Contains("Department Manager") || userRoles.Contains("DepManager");
 }
 <!DOCTYPE html>
 <html lang="tr">

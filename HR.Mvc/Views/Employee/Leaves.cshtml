@@ -3,8 +3,10 @@
     Layout = null;
     var userRole = Context.Session.GetString("UserRole");
     var userRoles = Context.Session.GetString("UserRoles") ?? "";
-    var isDeptManager = userRoles.Contains("DepartmentManager") || userRoles.Contains("DepManager");
-    var backUrl = isDeptManager ? Url.Action("Index", "Department") : Url.Action("Index", "Employee");
+    var isDeptManager = userRoles.Contains("Department Manager") || userRoles.Contains("DepManager");
+    var isHr = userRoles.Contains("HR");
+    var backUrl = isDeptManager
+    ? Url.Action("Index", "Department") : (userRole == "HR" ? Url.Action("Index", "HR") : Url.Action("Index", "Employee"));
 }
 <!DOCTYPE html>
 <html lang="tr">

@@ -157,6 +157,16 @@ namespace HR.Mvc.Controllers
                 return View(employee);
             }
 
+            // ✅ EMAIL KONTROLÜ EKLE
+            if (!string.IsNullOrEmpty(employee.Email) && _context.Users.Any(u => u.Email == employee.Email))
+            {
+                ModelState.AddModelError("", "Bu email adresi zaten kullanılıyor!");
+                ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
+                ViewBag.HRDepartmentName = hrDepartment.DepartmentName;
+                ViewBag.Jobs = new SelectList(_context.Jobs, "JobId", "JobTitle", employee.JobId);
+                return View(employee);
+            }
+
             if (!ModelState.IsValid)
             {
                 ViewBag.HRDepartmentId = hrDepartment.DepartmentId;
@@ -263,6 +273,16 @@ namespace HR.Mvc.Controllers
                 {
                     _context.Users.Remove(employee.User);
                 }
+
+                // 1) Manager ise, astların ManagerID'sini NULL yap
+                var subordinates = _context.Employees.Where(e => e.ManagerId == id).ToList();
+                foreach (var s in subordinates)
+                    s.ManagerId = null;
+
+                // 2) Reviewer ise, PerformanceReview.ReviewerID NULL yapılmalı
+                var reviewsReviewed = _context.PerformanceReviews.Where(r => r.ReviewerId == id).ToList();
+                foreach (var r in reviewsReviewed)
+                    r.ReviewerId = null;
 
                 _context.Employees.Remove(employee);
                 _context.SaveChanges();

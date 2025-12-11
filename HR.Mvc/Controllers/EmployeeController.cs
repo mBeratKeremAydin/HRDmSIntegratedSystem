@@ -162,6 +162,15 @@ namespace HR.Mvc.Controllers
                     return View(employee);
                 }
 
+                // ✅ EMAIL KONTROLÜ EKLE
+                if (!string.IsNullOrEmpty(employee.Email) && _context.Users.Any(u => u.Email == employee.Email))
+                {
+                    ModelState.AddModelError("Email", "Bu email adresi zaten kullanılıyor.");
+                    ReloadDropdowns();
+                    return View(employee);
+                }
+
+
                 // User oluştur
                 var user = new User
                 {

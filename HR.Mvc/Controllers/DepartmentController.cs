@@ -221,12 +221,12 @@ public class DepartmentController : Controller
 
 
 
-    // SADECE HR/Admin silebilir
+    // SADECE HR silebilir
     public IActionResult Delete(int id)
     {
         var userRole = HttpContext.Session.GetString("UserRole");
 
-        if (userRole != "HR" && userRole != "Admin")
+        if (userRole != "HR")
         {
             TempData["ErrorMessage"] = "Departman silme yetkiniz yok!";
             return RedirectToAction("Index");
@@ -234,6 +234,14 @@ public class DepartmentController : Controller
 
         var dep = _context.Departments.Find(id);
         if (dep == null) return NotFound();
+
+        var hasEmployee = _context.Employees.Any(e => e.DepartmentId == id);
+
+        if (hasEmployee)
+        {
+            TempData["ErrorMessage"] = "Bu departmana bağlı çalışanlar var! Önce çalışanların departmanını değiştirin!!!";
+            return RedirectToAction("Index","HR");
+        }
 
         _context.Departments.Remove(dep);
         _context.SaveChanges();
@@ -263,10 +271,16 @@ public class DepartmentController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Create(Department model)
     {
+
+        ModelState.Remove("Location");
+        ModelState.Remove("Manager");
+        ModelState.Remove("Employees");
+        ModelState.Remove("DocumentPermissions");
+
         if (!ModelState.IsValid)
         {
             ViewBag.Locations = new SelectList(_context.Locations, "LocationId", "LocationName", model.LocationId);
-            ViewBag.Managers = new SelectList(_context.Employees, "EmployeeId", "FirstName", model.ManagerId);
+            
             return View(model);
         }
 
