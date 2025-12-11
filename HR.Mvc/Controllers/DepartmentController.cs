@@ -29,17 +29,24 @@ public class DepartmentController : Controller
         // DepartmentManager ise sadece yöneticisi olduğu departmanları göster
         if (userRole == "Department Manager" || userRole == "DepManager")
         {
+            const string sql = @"
+                SELECT * FROM Departments
+                WHERE ManagerID = {0}";
+
             departments = _context.Departments
+                .FromSqlRaw(sql, employeeId)
                 .Include(d => d.Location)
                 .Include(d => d.Manager)
                 .Include(d => d.Employees)
-                .Where(d => d.ManagerId == employeeId.Value)
                 .ToList();
         }
         // HR/Admin ise tüm departmanları göster
         else if (userRole == "HR" || userRole == "Admin")
         {
+            const string sql = @"SELECT * FROM Departments";
+
             departments = _context.Departments
+                .FromSqlRaw(sql)
                 .Include(d => d.Location)
                 .Include(d => d.Manager)
                 .Include(d => d.Employees)
@@ -61,9 +68,12 @@ public class DepartmentController : Controller
         var userRole = HttpContext.Session.GetString("UserRole");
         var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
+        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
         var dep = _context.Departments
+            .FromSqlRaw(sqlDep, id)
             .Include(d => d.Employees) // departman çalışanlarına erişmek için
-            .FirstOrDefault(d => d.DepartmentId == id);
+            .AsEnumerable()
+            .FirstOrDefault();
 
         if (dep == null)
             return NotFound();
@@ -75,22 +85,33 @@ public class DepartmentController : Controller
             return RedirectToAction("Index");
         }
 
-        ViewBag.Locations = new SelectList(_context.Locations, "LocationId", "LocationName", dep.LocationId);
+        // Locations dropdown'u (SQL)
+        const string sqlLoc = @"SELECT * FROM Locations";
+        var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
+        ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", dep.LocationId);
 
         var isHRorAdmin = userRole == "HR" || userRole == "Admin";
         ViewBag.CanChangeManager = isHRorAdmin;
 
         if (isHRorAdmin)
         {
-            // SADECE BU DEPARTMANA AİT ÇALIŞANLAR
+            // SADECE BU DEPARTMANA AİT ÇALIŞANLAR (SQL)
+            const string sqlEmps = @"
+                SELECT * FROM Employees
+                WHERE DepartmentID = {0} AND IsActive = 1";
+
+            var managers = _context.Employees
+                .FromSqlRaw(sqlEmps, dep.DepartmentId)
+                .AsEnumerable()
+                .Select(e => new
+                {
+                    e.EmployeeId,
+                    FullName = e.FirstName + " " + e.LastName
+                })
+                .ToList();
+
             ViewBag.Managers = new SelectList(
-                _context.Employees
-                    .Where(e => e.DepartmentId == dep.DepartmentId && e.IsActive)
-                    .Select(e => new
-                    {
-                        e.EmployeeId,
-                        FullName = e.FirstName + " " + e.LastName
-                    }),
+                managers,
                 "EmployeeId",
                 "FullName",
                 dep.ManagerId);
@@ -106,7 +127,7 @@ public class DepartmentController : Controller
         var userRole = HttpContext.Session.GetString("UserRole");
         var isHRorAdmin = userRole == "HR" || userRole == "Admin";
 
-        // ✅ DEPARTMENT İÇİN: Navigation property'leri ModelState'den temizle
+        // Navigation property'leri ModelState'den temizle
         ModelState.Remove("Location");
         ModelState.Remove("Manager");
         ModelState.Remove("Employees");
@@ -114,21 +135,39 @@ public class DepartmentController : Controller
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Locations = new SelectList(_context.Locations, "LocationId", "LocationName", model.LocationId);
+            // Locations dropdown'u (SQL)
+            const string sqlLoc = @"SELECT * FROM Locations";
+            var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
+            ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", model.LocationId);
+
             ViewBag.CanChangeManager = isHRorAdmin;
             if (isHRorAdmin)
             {
+                const string sqlEmps = @"
+                    SELECT * FROM Employees
+                    WHERE DepartmentID = {0} AND IsActive = 1";
+
+                var managers = _context.Employees
+                    .FromSqlRaw(sqlEmps, model.DepartmentId)
+                    .AsEnumerable()
+                    .Select(e => new { e.EmployeeId, FullName = e.FirstName + " " + e.LastName })
+                    .ToList();
+
                 ViewBag.Managers = new SelectList(
-                    _context.Employees
-                        .Where(e => e.DepartmentId == model.DepartmentId && e.IsActive)
-                        .Select(e => new { e.EmployeeId, FullName = e.FirstName + " " + e.LastName }),
-                    "EmployeeId", "FullName", model.ManagerId);
+                    managers,
+                    "EmployeeId",
+                    "FullName",
+                    model.ManagerId);
             }
+
             return View(model);
         }
 
+        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
         var department = _context.Departments
-            .FirstOrDefault(d => d.DepartmentId == model.DepartmentId);
+            .FromSqlRaw(sqlDep, model.DepartmentId)
+            .AsEnumerable()
+            .FirstOrDefault();
 
         if (department == null)
             return NotFound();
@@ -144,31 +183,44 @@ public class DepartmentController : Controller
             // 1) Yeni manager'a DepartmentManager rolü ver
             if (newManagerId.HasValue)
             {
+                const string sqlNewMgr = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
                 var newManagerEmployee = _context.Employees
-                    .FirstOrDefault(e => e.EmployeeId == newManagerId.Value);
+                    .FromSqlRaw(sqlNewMgr, newManagerId.Value)
+                    .AsEnumerable()
+                    .FirstOrDefault();
 
                 if (newManagerEmployee != null && newManagerEmployee.UserId.HasValue)
                 {
-                    int depManagerRoleId = _context.Roles
-                        .Where(r => r.RoleName == "Department Manager" || r.RoleName == "Department Manager")
-                        .Select(r => r.RoleId)
+                    const string sqlDepRole = @"
+                        SELECT RoleID FROM Roles 
+                        WHERE RoleName = 'Department Manager'";
+
+                    int depManagerRoleId = _context.Database
+                        .SqlQueryRaw<int>(sqlDepRole)
+                        .AsEnumerable()
                         .FirstOrDefault();
 
                     if (depManagerRoleId != 0)
                     {
                         int newUserId = newManagerEmployee.UserId.Value;
 
-                        bool exists = _context.UserRoles
-                            .Any(x => x.UserId == newUserId && x.RoleId == depManagerRoleId);
+                        const string sqlExists = @"
+                            SELECT COUNT(*) AS Value
+                            FROM UserRoles
+                            WHERE UserID = {0} AND RoleID = {1}";
+
+                        bool exists = _context.Database
+                            .SqlQueryRaw<int>(sqlExists, newUserId, depManagerRoleId)
+                            .AsEnumerable()
+                            .FirstOrDefault() > 0;
 
                         if (!exists)
                         {
-                            _context.UserRoles.Add(new UserRole
-                            {
-                                UserId = newUserId,
-                                RoleId = depManagerRoleId,
-                                AssignedDate = DateTime.Now
-                            });
+                            const string sqlInsertRole = @"
+                                INSERT INTO UserRoles (UserID, RoleID, AssignedDate)
+                                VALUES ({0}, {1}, GETDATE())";
+
+                            _context.Database.ExecuteSqlRaw(sqlInsertRole, newUserId, depManagerRoleId);
                         }
                     }
                 }
@@ -177,33 +229,44 @@ public class DepartmentController : Controller
             // 2) Eski manager'dan rolü gerekirse kaldır
             if (oldManagerId.HasValue)
             {
+                const string sqlOldMgr = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
                 var oldManagerEmployee = _context.Employees
-                    .FirstOrDefault(e => e.EmployeeId == oldManagerId.Value);
+                    .FromSqlRaw(sqlOldMgr, oldManagerId.Value)
+                    .AsEnumerable()
+                    .FirstOrDefault();
 
                 if (oldManagerEmployee != null && oldManagerEmployee.UserId.HasValue)
                 {
-                    int depManagerRoleId = _context.Roles
-                        .Where(r => r.RoleName == "Department Manager" || r.RoleName == "Department Manager")
-                        .Select(r => r.RoleId)
+                    const string sqlDepRole = @"
+                        SELECT RoleID FROM Roles 
+                        WHERE RoleName = 'Department Manager'";
+
+                    int depManagerRoleId = _context.Database
+                        .SqlQueryRaw<int>(sqlDepRole)
+                        .AsEnumerable()
                         .FirstOrDefault();
 
                     if (depManagerRoleId != 0)
                     {
                         int oldUserId = oldManagerEmployee.UserId.Value;
 
-                        // Bu kullanıcı halen başka bir departmanın yöneticisi mi?
-                        bool stillManagerSomewhere = _context.Departments
-                            .Any(d => d.ManagerId == oldManagerEmployee.EmployeeId && d.DepartmentId != department.DepartmentId);
+                        const string sqlStillMgr = @"
+                            SELECT COUNT(*) AS Value
+                            FROM Departments
+                            WHERE ManagerID = {0} AND DepartmentID <> {1}";
+
+                        bool stillManagerSomewhere = _context.Database
+                            .SqlQueryRaw<int>(sqlStillMgr, oldManagerEmployee.EmployeeId, department.DepartmentId)
+                            .AsEnumerable()
+                            .FirstOrDefault() > 0;
 
                         if (!stillManagerSomewhere)
                         {
-                            var userRoleToRemove = _context.UserRoles
-                                .FirstOrDefault(ur => ur.UserId == oldUserId && ur.RoleId == depManagerRoleId);
+                            const string sqlDeleteUserRole = @"
+                                DELETE FROM UserRoles
+                                WHERE UserID = {0} AND RoleID = {1}";
 
-                            if (userRoleToRemove != null)
-                            {
-                                _context.UserRoles.Remove(userRoleToRemove);
-                            }
+                            _context.Database.ExecuteSqlRaw(sqlDeleteUserRole, oldUserId, depManagerRoleId);
                         }
                     }
                 }
@@ -213,13 +276,22 @@ public class DepartmentController : Controller
             department.ManagerId = model.ManagerId;
         }
 
-        _context.SaveChanges();
+        // Department güncelle – SQL
+        const string sqlUpdateDep = @"
+            UPDATE Departments
+            SET DepartmentName = {0}, LocationID = {1}, ManagerID = {2}
+            WHERE DepartmentID = {3}";
+
+        _context.Database.ExecuteSqlRaw(
+            sqlUpdateDep,
+            department.DepartmentName,
+            department.LocationId,
+            department.ManagerId,
+            department.DepartmentId);
 
         TempData["SuccessMessage"] = "Departman başarıyla güncellendi!";
         return RedirectToAction("Index");
     }
-
-
 
     // SADECE HR silebilir
     public IActionResult Delete(int id)
@@ -232,20 +304,33 @@ public class DepartmentController : Controller
             return RedirectToAction("Index");
         }
 
-        var dep = _context.Departments.Find(id);
+        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
+        var dep = _context.Departments
+            .FromSqlRaw(sqlDep, id)
+            .AsEnumerable()
+            .FirstOrDefault();
+
         if (dep == null) return NotFound();
 
-        var hasEmployee = _context.Employees.Any(e => e.DepartmentId == id);
+        const string sqlHasEmp = @"
+            SELECT COUNT(*) AS Value
+            FROM Employees
+            WHERE DepartmentID = {0}";
+
+        bool hasEmployee = _context.Database
+            .SqlQueryRaw<int>(sqlHasEmp, id)
+            .AsEnumerable()
+            .FirstOrDefault() > 0;
 
         if (hasEmployee)
         {
             TempData["ErrorMessage"] = "Bu departmana bağlı çalışanlar var! Önce çalışanların departmanını değiştirin!!!";
-            return RedirectToAction("Index","HR");
+            return RedirectToAction("Index", "HR");
         }
 
-        _context.Departments.Remove(dep);
-        _context.SaveChanges();
-        
+        const string sqlDeleteDep = @"DELETE FROM Departments WHERE DepartmentID = {0}";
+        _context.Database.ExecuteSqlRaw(sqlDeleteDep, id);
+
         TempData["SuccessMessage"] = "Departman başarıyla silindi!";
         return RedirectToAction("Index");
     }
@@ -262,8 +347,14 @@ public class DepartmentController : Controller
             return RedirectToAction("Index");
         }
 
-        ViewBag.Locations = new SelectList(_context.Locations, "LocationId", "LocationName");
-        ViewBag.Managers = new SelectList(_context.Employees, "EmployeeId", "FirstName");
+        const string sqlLoc = @"SELECT * FROM Locations";
+        var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
+        ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName");
+
+        const string sqlEmps = @"SELECT * FROM Employees";
+        var emps = _context.Employees.FromSqlRaw(sqlEmps).ToList();
+        ViewBag.Managers = new SelectList(emps, "EmployeeId", "FirstName");
+
         return View();
     }
 
@@ -271,7 +362,6 @@ public class DepartmentController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Create(Department model)
     {
-
         ModelState.Remove("Location");
         ModelState.Remove("Manager");
         ModelState.Remove("Employees");
@@ -279,18 +369,24 @@ public class DepartmentController : Controller
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Locations = new SelectList(_context.Locations, "LocationId", "LocationName", model.LocationId);
-            
+            const string sqlLoc = @"SELECT * FROM Locations";
+            var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
+            ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", model.LocationId);
+
             return View(model);
         }
 
-        // YENİ: Departman oluştururken ZORUNLU OLARAK yöneticiyi null yap
+        // Departman oluştururken yöneticiyi null yap
         model.ManagerId = null;
 
-        // ManagerId null olduğu için rol atama kısmını tamamen kaldırıyoruz / atlamış oluyoruz
+        const string sqlInsertDep = @"
+            INSERT INTO Departments (DepartmentName, LocationID, ManagerID)
+            VALUES ({0}, {1}, NULL)";
 
-        _context.Departments.Add(model);
-        _context.SaveChanges();
+        _context.Database.ExecuteSqlRaw(
+            sqlInsertDep,
+            model.DepartmentName,
+            model.LocationId);
 
         TempData["SuccessMessage"] = "Departman başarıyla eklendi!";
         return RedirectToAction("Index");
@@ -302,30 +398,31 @@ public class DepartmentController : Controller
         var userRole = HttpContext.Session.GetString("UserRole");
         var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
+        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
         var department = _context.Departments
+            .FromSqlRaw(sqlDep, id)
             .Include(d => d.Location)
             .Include(d => d.Manager)
             .Include(d => d.Employees)
                 .ThenInclude(e => e.Job)
             .Include(d => d.Employees)
                 .ThenInclude(e => e.EmploymentContracts.Where(c => c.IsActive))
-            .FirstOrDefault(d => d.DepartmentId == id);
+            .AsEnumerable()
+            .FirstOrDefault();
 
         if (department == null)
             return NotFound();
 
         // DepartmentManager ise sadece kendi departmanının çalışanlarını görebilir
-        var isDeptManager = userRole == "Department Manager" || userRole == "Department Manager";
+        var isDeptManager = userRole == "Department Manager" || userRole == "DepManager";
         if (isDeptManager && department.ManagerId != employeeId)
         {
             TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanın çalışanlarını görüntüleyebilirsiniz!";
             return RedirectToAction("Index");
         }
 
-        // Departman ID'sini ViewBag'e ekle
         ViewBag.DepartmentId = id;
 
         return View(department);
     }
-
 }
