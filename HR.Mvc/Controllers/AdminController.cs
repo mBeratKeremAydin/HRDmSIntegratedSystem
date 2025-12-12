@@ -305,7 +305,7 @@ namespace HR.Mvc.Controllers
                 TempData["ErrorMessage"] = "Yetkiniz yok!";
                 return RedirectToAction("Index", "Login");
             }
-
+            
             const string sqlFindEmp = "SELECT * FROM Employees WHERE EmployeeID = {0}";
             var employee = _context.Employees
                 .FromSqlRaw(sqlFindEmp, id)
@@ -315,6 +315,14 @@ namespace HR.Mvc.Controllers
             if (employee == null)
             {
                 TempData["ErrorMessage"] = "Çalışan bulunamadı!";
+                return RedirectToAction("HREmployees");
+            }
+
+            // Kendi kendini silmeyi engelle (UserId üzerinden)
+            var currentUserId = HttpContext.Session.GetInt32("UserId");
+            if (currentUserId.HasValue && employee.UserId == currentUserId.Value)
+            {
+                TempData["ErrorMessage"] = "Güvenlik nedeniyle kendi hesabınızı silemezsiniz!";
                 return RedirectToAction("HREmployees");
             }
 

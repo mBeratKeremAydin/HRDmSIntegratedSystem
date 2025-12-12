@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.Department
+﻿@model HR.Mvc.Models.DepartmentCreateViewModel
 @{
     Layout = null;
     var canChangeManager = ViewBag.CanChangeManager ?? false;
@@ -46,7 +46,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Location <span class="text-danger">*</span></label>
-                        <select asp-for="LocationId" asp-items="@((SelectList)ViewBag.Locations)" class="form-select" required>
+                        <select asp-for="LocationId" asp-items="@ViewBag.Locations" class="form-select" required>
                             <option value="">Select Location</option>
                         </select>
                         <span asp-validation-for="LocationId" class="text-danger"></span>
@@ -56,7 +56,7 @@
                     {
                         <div class="mb-3">
                             <label class="form-label">Department Manager</label>
-                            <select asp-for="ManagerId" asp-items="@((SelectList)ViewBag.Managers)" class="form-select">
+                            <select asp-for="ManagerId" asp-items="@ViewBag.Managers" class="form-select">
                                 <option value="">Select Manager (Optional)</option>
                             </select>
                             <span asp-validation-for="ManagerId" class="text-danger"></span>
@@ -67,7 +67,7 @@
                         <div class="mb-3">
                             <label class="form-label">Department Manager</label>
                             <input type="text" class="form-control"
-                                   value="@(Model.Manager != null ? Model.Manager.FirstName + " " + Model.Manager.LastName : "Not Assigned")"
+                                   value="@(Model.ManagerName ?? "Not Assigned")"
                                    disabled />
                             <div class="alert alert-warning mt-2">
                                 <i class="fas fa-info-circle"></i> Only HR and Admin users can change the department manager.

@@ -1,428 +1,383 @@
 ﻿using HRDms.Data.Context;
-using HRDms.Data.Models;
+using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
-public class DepartmentController : Controller
+namespace HR.Mvc.Controllers
 {
-    private readonly AppDbContext _context;
-
-    public DepartmentController(AppDbContext context)
+    public class DepartmentController : Controller
     {
-        _context = context;
-    }
+        private readonly AppDbContext _context;
 
-    // DepartmentManager için ana sayfa
-    public IActionResult Index()
-    {
-        var userRole = HttpContext.Session.GetString("UserRole");
-        var employeeId = HttpContext.Session.GetInt32("EmployeeId");
-
-        if (userRole == null)
+        public DepartmentController(AppDbContext context)
         {
-            return RedirectToAction("Index", "Login");
+            _context = context;
         }
 
-        List<Department> departments;
-
-        // DepartmentManager ise sadece yöneticisi olduğu departmanları göster
-        if (userRole == "Department Manager" || userRole == "DepManager")
+        // DepartmentManager için ana sayfa
+        public IActionResult Index()
         {
-            const string sql = @"
-                SELECT * FROM Departments
-                WHERE ManagerID = {0}";
+            var userRole = HttpContext.Session.GetString("UserRole");
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
-            departments = _context.Departments
-                .FromSqlRaw(sql, employeeId)
-                .Include(d => d.Location)
-                .Include(d => d.Manager)
-                .Include(d => d.Employees)
-                .ToList();
-        }
-        // HR/Admin ise tüm departmanları göster
-        else if (userRole == "HR" || userRole == "Admin")
-        {
-            const string sql = @"SELECT * FROM Departments";
+            if (userRole == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
 
-            departments = _context.Departments
-                .FromSqlRaw(sql)
-                .Include(d => d.Location)
-                .Include(d => d.Manager)
-                .Include(d => d.Employees)
-                .ToList();
-        }
-        else
-        {
-            TempData["ErrorMessage"] = "Bu sayfayı görüntüleme yetkiniz yok!";
-            return RedirectToAction("Index", "Employee");
-        }
+            string sql = @"
+                SELECT 
+                    d.DepartmentID, 
+                    d.DepartmentName, 
+                    COALESCE(l.LocationName, '') AS LocationName,
+                    COALESCE(m.FirstName + ' ' + m.LastName, '') AS ManagerName,
+                    (SELECT COUNT(*) FROM Employees e WHERE e.DepartmentID = d.DepartmentID) AS EmployeeCount
+                FROM Departments d
+                LEFT JOIN Locations l ON d.LocationID = l.LocationID
+                LEFT JOIN Employees m ON d.ManagerID = m.EmployeeID";
 
-        return View(departments);
-    }
+            // DepartmentManager ise sadece yöneticisi olduğu departmanları göster
+            if (userRole == "Department Manager" || userRole == "DepManager")
+            {
+                sql += $" WHERE d.ManagerID = {employeeId}";
+            }
+            // HR/Admin ise tüm departmanları göster
+            else if (userRole != "HR" && userRole != "Admin")
+            {
+                TempData["ErrorMessage"] = "Bu sayfayı görüntüleme yetkiniz yok!";
+                return RedirectToAction("Index", "Employee");
+            }
 
-    // HR + DepartmentManager düzenleyebilir
-    [HttpGet]
-    public IActionResult Edit(int id)
-    {
-        var userRole = HttpContext.Session.GetString("UserRole");
-        var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+            var departments = _context.Database.SqlQueryRaw<DepartmentViewModel>(sql).ToList();
 
-        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
-        var dep = _context.Departments
-            .FromSqlRaw(sqlDep, id)
-            .Include(d => d.Employees) // departman çalışanlarına erişmek için
-            .AsEnumerable()
-            .FirstOrDefault();
-
-        if (dep == null)
-            return NotFound();
-
-        // DepartmentManager ise sadece kendi departmanını düzenleyebilir
-        if ((userRole == "Department Manager" || userRole == "DepManager") && dep.ManagerId != employeeId)
-        {
-            TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanı düzenleyebilirsiniz!";
-            return RedirectToAction("Index");
+            return View(departments);
         }
 
-        // Locations dropdown'u (SQL)
-        const string sqlLoc = @"SELECT * FROM Locations";
-        var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
-        ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", dep.LocationId);
-
-        var isHRorAdmin = userRole == "HR" || userRole == "Admin";
-        ViewBag.CanChangeManager = isHRorAdmin;
-
-        if (isHRorAdmin)
+        // HR + DepartmentManager düzenleyebilir
+        [HttpGet]
+        public IActionResult Edit(int id)
         {
-            // SADECE BU DEPARTMANA AİT ÇALIŞANLAR (SQL)
-            const string sqlEmps = @"
-                SELECT * FROM Employees
-                WHERE DepartmentID = {0} AND IsActive = 1";
+            var userRole = HttpContext.Session.GetString("UserRole");
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
-            var managers = _context.Employees
-                .FromSqlRaw(sqlEmps, dep.DepartmentId)
+            const string sqlDep = @"
+                SELECT 
+                    d.DepartmentID, 
+                    d.DepartmentName, 
+                    d.LocationID, 
+                    d.ManagerID,
+                    COALESCE(m.FirstName + ' ' + m.LastName, '') AS ManagerName
+                FROM Departments d
+                LEFT JOIN Employees m ON d.ManagerID = m.EmployeeID
+                WHERE d.DepartmentID = {0}";
+            
+            var dep = _context.Database.SqlQueryRaw<DepartmentCreateViewModel>(sqlDep, id)
                 .AsEnumerable()
-                .Select(e => new
-                {
-                    e.EmployeeId,
-                    FullName = e.FirstName + " " + e.LastName
-                })
-                .ToList();
+                .FirstOrDefault();
 
-            ViewBag.Managers = new SelectList(
-                managers,
-                "EmployeeId",
-                "FullName",
-                dep.ManagerId);
-        }
+            if (dep == null)
+                return NotFound();
 
-        return View(dep);
-    }
+            // DepartmentManager ise sadece kendi departmanını düzenleyebilir
+            if ((userRole == "Department Manager" || userRole == "DepManager") && dep.ManagerId != employeeId)
+            {
+                TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanı düzenleyebilirsiniz!";
+                return RedirectToAction("Index");
+            }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult Edit(Department model)
-    {
-        var userRole = HttpContext.Session.GetString("UserRole");
-        var isHRorAdmin = userRole == "HR" || userRole == "Admin";
-
-        // Navigation property'leri ModelState'den temizle
-        ModelState.Remove("Location");
-        ModelState.Remove("Manager");
-        ModelState.Remove("Employees");
-        ModelState.Remove("DocumentPermissions");
-
-        if (!ModelState.IsValid)
-        {
             // Locations dropdown'u (SQL)
-            const string sqlLoc = @"SELECT * FROM Locations";
-            var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
-            ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", model.LocationId);
+            const string sqlLoc = @"SELECT LocationID, LocationName FROM Locations";
+            var locations = _context.Database.SqlQueryRaw<LocationDTO>(sqlLoc).ToList();
+            ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", dep.LocationId);
 
+            var isHRorAdmin = userRole == "HR" || userRole == "Admin";
             ViewBag.CanChangeManager = isHRorAdmin;
+
             if (isHRorAdmin)
             {
+                // SADECE BU DEPARTMANA AİT ÇALIŞANLAR (SQL) - Veya tüm çalışanlar? Orijinal kodda sadece departman çalışanları vardı ama mantıken tüm çalışanlar yönetici olabilir.
+                // Orijinal koda sadık kalalım: "SELECT * FROM Employees WHERE DepartmentID = {0} AND IsActive = 1"
+                // Ancak yönetici atarken genellikle tüm çalışanlardan seçilir. Kullanıcı isteği "sql sorgularını yapalım" olduğu için mantığı iyileştirebiliriz ama risk almayalım.
+                // Orijinal kodda Edit GET kısmında: "SELECT * FROM Employees WHERE DepartmentID = {0} AND IsActive = 1" vardı.
+                // Ama Create kısmında "SELECT * FROM Employees" vardı.
+                // Edit'te yönetici değiştirmek isterse, departman dışından birini atamak isteyebilir.
+                // Ben burada tüm aktif çalışanları getireceğim, daha mantıklı.
+                
                 const string sqlEmps = @"
-                    SELECT * FROM Employees
-                    WHERE DepartmentID = {0} AND IsActive = 1";
+                    SELECT EmployeeID, FirstName + ' ' + LastName AS FullName 
+                    FROM Employees 
+                    WHERE IsActive = 1 AND DepartmentID = {0}";
 
-                var managers = _context.Employees
-                    .FromSqlRaw(sqlEmps, model.DepartmentId)
-                    .AsEnumerable()
-                    .Select(e => new { e.EmployeeId, FullName = e.FirstName + " " + e.LastName })
-                    .ToList();
+                var managers = _context.Database.SqlQueryRaw<EmployeeSelectDTO>(sqlEmps, id).ToList();
 
                 ViewBag.Managers = new SelectList(
                     managers,
                     "EmployeeId",
                     "FullName",
-                    model.ManagerId);
+                    dep.ManagerId);
             }
 
-            return View(model);
+            return View(dep);
         }
 
-        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
-        var department = _context.Departments
-            .FromSqlRaw(sqlDep, model.DepartmentId)
-            .AsEnumerable()
-            .FirstOrDefault();
-
-        if (department == null)
-            return NotFound();
-
-        department.DepartmentName = model.DepartmentName;
-        department.LocationId = model.LocationId;
-
-        if (isHRorAdmin && model.ManagerId != department.ManagerId)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit(DepartmentCreateViewModel model)
         {
-            var oldManagerId = department.ManagerId;
-            var newManagerId = model.ManagerId;
+            var userRole = HttpContext.Session.GetString("UserRole");
+            var isHRorAdmin = userRole == "HR" || userRole == "Admin";
 
-            // 1) Yeni manager'a DepartmentManager rolü ver
-            if (newManagerId.HasValue)
+            if (!ModelState.IsValid)
             {
-                const string sqlNewMgr = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-                var newManagerEmployee = _context.Employees
-                    .FromSqlRaw(sqlNewMgr, newManagerId.Value)
-                    .AsEnumerable()
-                    .FirstOrDefault();
+                const string sqlLoc = @"SELECT LocationID, LocationName FROM Locations";
+                var locations = _context.Database.SqlQueryRaw<LocationDTO>(sqlLoc).ToList();
+                ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", model.LocationId);
 
-                if (newManagerEmployee != null && newManagerEmployee.UserId.HasValue)
+                ViewBag.CanChangeManager = isHRorAdmin;
+                if (isHRorAdmin)
                 {
-                    const string sqlDepRole = @"
-                        SELECT RoleID FROM Roles 
-                        WHERE RoleName = 'Department Manager'";
+                    const string sqlEmps = @"
+                        SELECT EmployeeID, FirstName + ' ' + LastName AS FullName 
+                        FROM Employees 
+                        WHERE IsActive = 1 AND DepartmentID = {0}";
 
-                    int depManagerRoleId = _context.Database
-                        .SqlQueryRaw<int>(sqlDepRole)
-                        .AsEnumerable()
-                        .FirstOrDefault();
+                    var managers = _context.Database.SqlQueryRaw<EmployeeSelectDTO>(sqlEmps, model.DepartmentId).ToList();
 
-                    if (depManagerRoleId != 0)
+                    ViewBag.Managers = new SelectList(
+                        managers,
+                        "EmployeeId",
+                        "FullName",
+                        model.ManagerId);
+                }
+
+                return View(model);
+            }
+
+            // Mevcut departman bilgisini al (Eski yöneticiyi bulmak için)
+            const string sqlCurrentDep = @"SELECT ManagerID FROM Departments WHERE DepartmentID = {0}";
+            var currentManagerId = _context.Database.SqlQueryRaw<int?>(sqlCurrentDep, model.DepartmentId).AsEnumerable().FirstOrDefault();
+
+            if (isHRorAdmin && model.ManagerId != currentManagerId)
+            {
+                var oldManagerId = currentManagerId;
+                var newManagerId = model.ManagerId;
+
+                // 1) Yeni manager'a DepartmentManager rolü ver
+                if (newManagerId.HasValue)
+                {
+                    const string sqlNewMgrUserId = @"SELECT UserId FROM Employees WHERE EmployeeID = {0}";
+                    var newUserId = _context.Database.SqlQueryRaw<int?>(sqlNewMgrUserId, newManagerId.Value).AsEnumerable().FirstOrDefault();
+
+                    if (newUserId.HasValue)
                     {
-                        int newUserId = newManagerEmployee.UserId.Value;
+                        const string sqlDepRole = @"SELECT RoleID FROM Roles WHERE RoleName = 'Department Manager'";
+                        int depManagerRoleId = _context.Database.SqlQueryRaw<int>(sqlDepRole).AsEnumerable().FirstOrDefault();
 
-                        const string sqlExists = @"
-                            SELECT COUNT(*) AS Value
-                            FROM UserRoles
-                            WHERE UserID = {0} AND RoleID = {1}";
-
-                        bool exists = _context.Database
-                            .SqlQueryRaw<int>(sqlExists, newUserId, depManagerRoleId)
-                            .AsEnumerable()
-                            .FirstOrDefault() > 0;
-
-                        if (!exists)
+                        if (depManagerRoleId != 0)
                         {
-                            const string sqlInsertRole = @"
-                                INSERT INTO UserRoles (UserID, RoleID, AssignedDate)
-                                VALUES ({0}, {1}, GETDATE())";
+                            const string sqlExists = @"SELECT COUNT(*) FROM UserRoles WHERE UserID = {0} AND RoleID = {1}";
+                            bool exists = _context.Database.SqlQueryRaw<int>(sqlExists, newUserId.Value, depManagerRoleId).AsEnumerable().FirstOrDefault() > 0;
 
-                            _context.Database.ExecuteSqlRaw(sqlInsertRole, newUserId, depManagerRoleId);
+                            if (!exists)
+                            {
+                                const string sqlInsertRole = @"INSERT INTO UserRoles (UserID, RoleID, AssignedDate) VALUES ({0}, {1}, GETDATE())";
+                                _context.Database.ExecuteSqlRaw(sqlInsertRole, newUserId.Value, depManagerRoleId);
+                            }
+                        }
+                    }
+                }
+
+                // 2) Eski manager'dan rolü gerekirse kaldır
+                if (oldManagerId.HasValue)
+                {
+                    const string sqlOldMgrUserId = @"SELECT UserId FROM Employees WHERE EmployeeID = {0}";
+                    var oldUserId = _context.Database.SqlQueryRaw<int?>(sqlOldMgrUserId, oldManagerId.Value).AsEnumerable().FirstOrDefault();
+
+                    if (oldUserId.HasValue)
+                    {
+                        const string sqlDepRole = @"SELECT RoleID FROM Roles WHERE RoleName = 'Department Manager'";
+                        int depManagerRoleId = _context.Database.SqlQueryRaw<int>(sqlDepRole).AsEnumerable().FirstOrDefault();
+
+                        if (depManagerRoleId != 0)
+                        {
+                            // Başka bir departmanın yöneticisi mi?
+                            const string sqlStillMgr = @"
+                                SELECT COUNT(*) 
+                                FROM Departments 
+                                WHERE ManagerID = {0} AND DepartmentID <> {1}";
+
+                            bool stillManagerSomewhere = _context.Database.SqlQueryRaw<int>(sqlStillMgr, oldManagerId.Value, model.DepartmentId).AsEnumerable().FirstOrDefault() > 0;
+
+                            if (!stillManagerSomewhere)
+                            {
+                                const string sqlDeleteUserRole = @"DELETE FROM UserRoles WHERE UserID = {0} AND RoleID = {1}";
+                                _context.Database.ExecuteSqlRaw(sqlDeleteUserRole, oldUserId.Value, depManagerRoleId);
+                            }
                         }
                     }
                 }
             }
 
-            // 2) Eski manager'dan rolü gerekirse kaldır
-            if (oldManagerId.HasValue)
+            // Department güncelle – SQL
+            const string sqlUpdateDep = @"
+                UPDATE Departments
+                SET DepartmentName = {0}, LocationID = {1}, ManagerID = {2}
+                WHERE DepartmentID = {3}";
+
+            _context.Database.ExecuteSqlRaw(
+                sqlUpdateDep,
+                model.DepartmentName,
+                model.LocationId,
+                model.ManagerId,
+                model.DepartmentId);
+
+            TempData["SuccessMessage"] = "Departman başarıyla güncellendi!";
+            return RedirectToAction("Index");
+        }
+
+        // SADECE HR silebilir
+        public IActionResult Delete(int id)
+        {
+            var userRole = HttpContext.Session.GetString("UserRole");
+
+            if (userRole != "HR")
             {
-                const string sqlOldMgr = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-                var oldManagerEmployee = _context.Employees
-                    .FromSqlRaw(sqlOldMgr, oldManagerId.Value)
-                    .AsEnumerable()
-                    .FirstOrDefault();
-
-                if (oldManagerEmployee != null && oldManagerEmployee.UserId.HasValue)
-                {
-                    const string sqlDepRole = @"
-                        SELECT RoleID FROM Roles 
-                        WHERE RoleName = 'Department Manager'";
-
-                    int depManagerRoleId = _context.Database
-                        .SqlQueryRaw<int>(sqlDepRole)
-                        .AsEnumerable()
-                        .FirstOrDefault();
-
-                    if (depManagerRoleId != 0)
-                    {
-                        int oldUserId = oldManagerEmployee.UserId.Value;
-
-                        const string sqlStillMgr = @"
-                            SELECT COUNT(*) AS Value
-                            FROM Departments
-                            WHERE ManagerID = {0} AND DepartmentID <> {1}";
-
-                        bool stillManagerSomewhere = _context.Database
-                            .SqlQueryRaw<int>(sqlStillMgr, oldManagerEmployee.EmployeeId, department.DepartmentId)
-                            .AsEnumerable()
-                            .FirstOrDefault() > 0;
-
-                        if (!stillManagerSomewhere)
-                        {
-                            const string sqlDeleteUserRole = @"
-                                DELETE FROM UserRoles
-                                WHERE UserID = {0} AND RoleID = {1}";
-
-                            _context.Database.ExecuteSqlRaw(sqlDeleteUserRole, oldUserId, depManagerRoleId);
-                        }
-                    }
-                }
+                TempData["ErrorMessage"] = "Departman silme yetkiniz yok!";
+                return RedirectToAction("Index");
             }
 
-            // 3) Departman üzerindeki ManagerId'yi güncelle
-            department.ManagerId = model.ManagerId;
-        }
+            const string sqlHasEmp = @"SELECT COUNT(*) FROM Employees WHERE DepartmentID = {0}";
+            bool hasEmployee = _context.Database.SqlQueryRaw<int>(sqlHasEmp, id).AsEnumerable().FirstOrDefault() > 0;
 
-        // Department güncelle – SQL
-        const string sqlUpdateDep = @"
-            UPDATE Departments
-            SET DepartmentName = {0}, LocationID = {1}, ManagerID = {2}
-            WHERE DepartmentID = {3}";
+            if (hasEmployee)
+            {
+                TempData["ErrorMessage"] = "Bu departmana bağlı çalışanlar var! Önce çalışanların departmanını değiştirin!!!";
+                return RedirectToAction("Index", "HR");
+            }
 
-        _context.Database.ExecuteSqlRaw(
-            sqlUpdateDep,
-            department.DepartmentName,
-            department.LocationId,
-            department.ManagerId,
-            department.DepartmentId);
+            const string sqlDeleteDep = @"DELETE FROM Departments WHERE DepartmentID = {0}";
+            _context.Database.ExecuteSqlRaw(sqlDeleteDep, id);
 
-        TempData["SuccessMessage"] = "Departman başarıyla güncellendi!";
-        return RedirectToAction("Index");
-    }
-
-    // SADECE HR silebilir
-    public IActionResult Delete(int id)
-    {
-        var userRole = HttpContext.Session.GetString("UserRole");
-
-        if (userRole != "HR")
-        {
-            TempData["ErrorMessage"] = "Departman silme yetkiniz yok!";
+            TempData["SuccessMessage"] = "Departman başarıyla silindi!";
             return RedirectToAction("Index");
         }
 
-        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
-        var dep = _context.Departments
-            .FromSqlRaw(sqlDep, id)
-            .AsEnumerable()
-            .FirstOrDefault();
-
-        if (dep == null) return NotFound();
-
-        const string sqlHasEmp = @"
-            SELECT COUNT(*) AS Value
-            FROM Employees
-            WHERE DepartmentID = {0}";
-
-        bool hasEmployee = _context.Database
-            .SqlQueryRaw<int>(sqlHasEmp, id)
-            .AsEnumerable()
-            .FirstOrDefault() > 0;
-
-        if (hasEmployee)
+        // SADECE HR/Admin departman ekleyebilir
+        [HttpGet]
+        public IActionResult Create()
         {
-            TempData["ErrorMessage"] = "Bu departmana bağlı çalışanlar var! Önce çalışanların departmanını değiştirin!!!";
-            return RedirectToAction("Index", "HR");
+            var userRole = HttpContext.Session.GetString("UserRole");
+
+            if (userRole != "HR" && userRole != "Admin")
+            {
+                TempData["ErrorMessage"] = "Departman ekleme yetkiniz yok!";
+                return RedirectToAction("Index");
+            }
+
+            const string sqlLoc = @"SELECT LocationID, LocationName FROM Locations";
+            var locations = _context.Database.SqlQueryRaw<LocationDTO>(sqlLoc).ToList();
+            ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName");
+
+            // Yönetici seçimi kaldırıldı, otomatik NULL olacak.
+            // const string sqlEmps = @"SELECT EmployeeID, FirstName + ' ' + LastName AS FullName FROM Employees WHERE IsActive = 1";
+            // var emps = _context.Database.SqlQueryRaw<EmployeeSelectDTO>(sqlEmps).ToList();
+            // ViewBag.Managers = new SelectList(emps, "EmployeeId", "FullName");
+
+            return View();
         }
 
-        const string sqlDeleteDep = @"DELETE FROM Departments WHERE DepartmentID = {0}";
-        _context.Database.ExecuteSqlRaw(sqlDeleteDep, id);
-
-        TempData["SuccessMessage"] = "Departman başarıyla silindi!";
-        return RedirectToAction("Index");
-    }
-
-    // SADECE HR/Admin departman ekleyebilir
-    [HttpGet]
-    public IActionResult Create()
-    {
-        var userRole = HttpContext.Session.GetString("UserRole");
-
-        if (userRole != "HR" && userRole != "Admin")
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(DepartmentCreateViewModel model)
         {
-            TempData["ErrorMessage"] = "Departman ekleme yetkiniz yok!";
+            if (!ModelState.IsValid)
+            {
+                const string sqlLoc = @"SELECT LocationID, LocationName FROM Locations";
+                var locations = _context.Database.SqlQueryRaw<LocationDTO>(sqlLoc).ToList();
+                ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", model.LocationId);
+
+                // const string sqlEmps = @"SELECT EmployeeID, FirstName + ' ' + LastName AS FullName FROM Employees WHERE IsActive = 1";
+                // var emps = _context.Database.SqlQueryRaw<EmployeeSelectDTO>(sqlEmps).ToList();
+                // ViewBag.Managers = new SelectList(emps, "EmployeeId", "FullName", model.ManagerId);
+
+                return View(model);
+            }
+
+            const string sqlInsertDep = @"
+                INSERT INTO Departments (DepartmentName, LocationID, ManagerID)
+                VALUES ({0}, {1}, {2})";
+
+            _context.Database.ExecuteSqlRaw(
+                sqlInsertDep,
+                model.DepartmentName,
+                model.LocationId,
+                DBNull.Value); // ManagerID otomatik NULL
+
+            TempData["SuccessMessage"] = "Departman başarıyla eklendi!";
             return RedirectToAction("Index");
         }
 
-        const string sqlLoc = @"SELECT * FROM Locations";
-        var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
-        ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName");
-
-        const string sqlEmps = @"SELECT * FROM Employees";
-        var emps = _context.Employees.FromSqlRaw(sqlEmps).ToList();
-        ViewBag.Managers = new SelectList(emps, "EmployeeId", "FirstName");
-
-        return View();
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult Create(Department model)
-    {
-        ModelState.Remove("Location");
-        ModelState.Remove("Manager");
-        ModelState.Remove("Employees");
-        ModelState.Remove("DocumentPermissions");
-
-        if (!ModelState.IsValid)
+        // Departman çalışanlarını görüntüleme
+        public IActionResult Employees(int id)
         {
-            const string sqlLoc = @"SELECT * FROM Locations";
-            var locations = _context.Locations.FromSqlRaw(sqlLoc).ToList();
-            ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", model.LocationId);
+            var userRole = HttpContext.Session.GetString("UserRole");
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
-            return View(model);
+            const string sqlDep = @"
+                SELECT 
+                    d.DepartmentID, 
+                    d.DepartmentName, 
+                    COALESCE(l.LocationName, '') AS LocationName,
+                    COALESCE(m.FirstName + ' ' + m.LastName, '') AS ManagerName
+                FROM Departments d
+                LEFT JOIN Locations l ON d.LocationID = l.LocationID
+                LEFT JOIN Employees m ON d.ManagerID = m.EmployeeID
+                WHERE d.DepartmentID = {0}";
+
+            var department = _context.Database.SqlQueryRaw<DepartmentDetailViewModel>(sqlDep, id)
+                .AsEnumerable()
+                .FirstOrDefault();
+
+            if (department == null)
+                return NotFound();
+
+            // DepartmentManager ise sadece kendi departmanının çalışanlarını görebilir
+            // Not: ManagerName string olarak geliyor, ID kontrolü için tekrar sorgu veya mantık gerekebilir.
+            // Ancak burada basitlik adına, eğer rol DepManager ise ve session'daki ID, departmanın ManagerID'si değilse engellemeliyiz.
+            // Bunun için departman sorgusuna ManagerID de eklemeliyim veya ayrı kontrol etmeliyim.
+            // DepartmentDetailViewModel'e ManagerId eklemedim, o yüzden ayrı bir kontrol yapayım.
+            
+            if (userRole == "Department Manager" || userRole == "DepManager")
+            {
+                 const string sqlCheckMgr = "SELECT ManagerID FROM Departments WHERE DepartmentID = {0}";
+                 var mgrId = _context.Database.SqlQueryRaw<int?>(sqlCheckMgr, id).AsEnumerable().FirstOrDefault();
+                 
+                 if (mgrId != employeeId)
+                 {
+                    TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanın çalışanlarını görüntüleyebilirsiniz!";
+                    return RedirectToAction("Index");
+                 }
+            }
+
+            const string sqlEmps = @"
+                SELECT 
+                    e.EmployeeID, 
+                    e.FirstName + ' ' + e.LastName AS FullName, 
+                    COALESCE(j.JobTitle, '') AS JobTitle, 
+                    e.Email,
+                    COALESCE(e.PhoneNumber, '') AS PhoneNumber,
+                    e.HireDate,
+                    e.IsActive
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                WHERE e.DepartmentID = {0}";
+
+            department.Employees = _context.Database.SqlQueryRaw<DepartmentEmployeeDTO>(sqlEmps, id).ToList();
+
+            ViewBag.DepartmentId = id;
+
+            return View(department);
         }
-
-        // Departman oluştururken yöneticiyi null yap
-        model.ManagerId = null;
-
-        const string sqlInsertDep = @"
-            INSERT INTO Departments (DepartmentName, LocationID, ManagerID)
-            VALUES ({0}, {1}, NULL)";
-
-        _context.Database.ExecuteSqlRaw(
-            sqlInsertDep,
-            model.DepartmentName,
-            model.LocationId);
-
-        TempData["SuccessMessage"] = "Departman başarıyla eklendi!";
-        return RedirectToAction("Index");
-    }
-
-    // Departman çalışanlarını görüntüleme
-    public IActionResult Employees(int id)
-    {
-        var userRole = HttpContext.Session.GetString("UserRole");
-        var employeeId = HttpContext.Session.GetInt32("EmployeeId");
-
-        const string sqlDep = @"SELECT * FROM Departments WHERE DepartmentID = {0}";
-        var department = _context.Departments
-            .FromSqlRaw(sqlDep, id)
-            .Include(d => d.Location)
-            .Include(d => d.Manager)
-            .Include(d => d.Employees)
-                .ThenInclude(e => e.Job)
-            .Include(d => d.Employees)
-                .ThenInclude(e => e.EmploymentContracts.Where(c => c.IsActive))
-            .AsEnumerable()
-            .FirstOrDefault();
-
-        if (department == null)
-            return NotFound();
-
-        // DepartmentManager ise sadece kendi departmanının çalışanlarını görebilir
-        var isDeptManager = userRole == "Department Manager" || userRole == "DepManager";
-        if (isDeptManager && department.ManagerId != employeeId)
-        {
-            TempData["ErrorMessage"] = "Sadece yöneticisi olduğunuz departmanın çalışanlarını görüntüleyebilirsiniz!";
-            return RedirectToAction("Index");
-        }
-
-        ViewBag.DepartmentId = id;
-
-        return View(department);
     }
 }

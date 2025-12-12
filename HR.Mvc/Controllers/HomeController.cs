@@ -2,6 +2,8 @@ using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using HRDms.Data.Context;
+using Microsoft.EntityFrameworkCore;
+using HRDms.Data.Models;
 
 namespace HR.Mvc.Controllers
 {
@@ -18,7 +20,8 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Index()
         {
-            var emp = _context.Employees.ToList();
+            var sql = "SELECT * FROM Employees";
+            var emp = _context.Employees.FromSqlRaw(sql).ToList();
             return View(emp);
         }
 

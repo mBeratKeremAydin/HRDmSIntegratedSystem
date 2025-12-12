@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.Department
+﻿@model HR.Mvc.Models.DepartmentDetailViewModel
 @{
     Layout = null;
 }
@@ -16,13 +16,13 @@
                 <h2><i class="fas fa-building"></i> @Model.DepartmentName</h2>
                 <p class="text-muted">
                     <i class="fas fa-users"></i> @Model.Employees.Count Employees
-                    @if (Model.Location != null)
+                    @if (!string.IsNullOrEmpty(Model.LocationName))
                     {
-                        <span class="ms-3"><i class="fas fa-map-marker-alt"></i> @Model.Location.LocationName</span>
+                        <span class="ms-3"><i class="fas fa-map-marker-alt"></i> @Model.LocationName</span>
                     }
-                    @if (Model.Manager != null)
+                    @if (!string.IsNullOrEmpty(Model.ManagerName))
                     {
-                        <span class="ms-3"><i class="fas fa-user-tie"></i> Manager: @Model.Manager.FirstName @Model.Manager.LastName</span>
+                        <span class="ms-3"><i class="fas fa-user-tie"></i> Manager: @Model.ManagerName</span>
                     }
                 </p>
             </div>
@@ -57,12 +57,12 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var employee in Model.Employees.OrderBy(e => e.FirstName))
+                            @foreach (var employee in Model.Employees.OrderBy(e => e.FullName))
                             {
                                 <tr>
                                     <td>@employee.EmployeeId</td>
-                                    <td>@employee.FirstName @employee.LastName</td>
-                                    <td>@(employee.Job?.JobTitle ?? "N/A")</td>
+                                    <td>@employee.FullName</td>
+                                    <td>@(employee.JobTitle ?? "N/A")</td>
                                     <td>@employee.Email</td>
                                     <td>@employee.PhoneNumber</td>
                                     <td>@(employee.HireDate?.ToString("dd/MM/yyyy") ?? "N/A")</td>

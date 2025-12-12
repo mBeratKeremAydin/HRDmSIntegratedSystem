@@ -104,7 +104,7 @@ namespace HR.Mvc.Controllers
                 sessionEmployeeId.Value, 
                 model.ReviewDate, 
                 model.Score, 
-                model.Notes ?? (object)DBNull.Value);
+                model.Notes);
 
             return RedirectToAction("Index", new { employeeId = model.EmployeeId });
         }

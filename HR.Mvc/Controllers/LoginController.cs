@@ -1,4 +1,5 @@
 ﻿using HRDms.Data.Context;
+using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,38 +17,61 @@ namespace HR.Mvc.Controllers
         [HttpGet]
         public IActionResult Index()
         {
-            // Zaten giriş yapmışsa ana sayfaya yönlendir
-            if (HttpContext.Session.GetInt32("UserId") != null)
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId != null)
             {
-                var role = HttpContext.Session.GetString("UserRole");
-                return RedirectByRole(role);
+                // Kullanıcının hala aktif olup olmadığını SQL ile kontrol et
+                var sqlCheck = "SELECT COUNT(*) AS Value FROM Users WHERE UserID = {0} AND IsActive = 1";
+                var isActive = _context.Database.SqlQueryRaw<int>(sqlCheck, userId).AsEnumerable().FirstOrDefault() > 0;
+
+                if (isActive)
+                {
+                    var role = HttpContext.Session.GetString("UserRole");
+                    return RedirectByRole(role);
+                }
+                else
+                {
+                    // Kullanıcı pasif veya silinmişse oturumu kapat
+                    HttpContext.Session.Clear();
+                }
             }
 
-            return View();
+            return View(new LoginViewModel());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Login(string username, string password)
+        public IActionResult Login(LoginViewModel model)
         {
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            if (!ModelState.IsValid)
             {
-                TempData["ErrorMessage"] = "Kullanıcı adı ve şifre gereklidir!";
-                return RedirectToAction("Index");
+                return View("Index", model);
             }
 
-            // Kullanıcıyı bul (Tüm rolleri ile birlikte)
-            var user = _context.Users
-                .Include(u => u.UserRoles)
-                    .ThenInclude(ur => ur.Role)
-                .Include(u => u.Employee)
-                .FirstOrDefault(u => u.Username == username && u.UserPassword == password && u.IsActive);
+            var sql = @"
+                SELECT 
+                    u.UserID, 
+                    u.Username, 
+                    u.Email, 
+                    e.EmployeeID, 
+                    e.FirstName, 
+                    e.LastName, 
+                    r.RoleName
+                FROM Users u
+                LEFT JOIN Employees e ON u.UserID = e.UserID
+                LEFT JOIN UserRoles ur ON u.UserID = ur.UserID
+                LEFT JOIN Roles r ON ur.RoleID = r.RoleID
+                WHERE u.Username = {0} AND u.UserPassword = {1} AND u.IsActive = 1";
 
-            if (user == null)
+            var loginData = _context.Database.SqlQueryRaw<UserLoginDTO>(sql, model.Username, model.Password).ToList();
+
+            if (!loginData.Any())
             {
                 TempData["ErrorMessage"] = "Kullanıcı adı veya şifre hatalı!";
-                return RedirectToAction("Index");
+                return View("Index", model);
             }
+
+            var user = loginData.First();
 
             // Session'a kullanıcı bilgilerini kaydet
             HttpContext.Session.SetInt32("UserId", user.UserId);
@@ -55,19 +79,24 @@ namespace HR.Mvc.Controllers
             HttpContext.Session.SetString("UserEmail", user.Email ?? "");
 
             // Kullanıcının tüm rollerini al
-            var userRoles = user.UserRoles.Select(ur => ur.Role?.RoleName).Where(r => r != null).ToList();
+            var userRoles = loginData
+                .Select(x => x.RoleName)
+                .Where(r => !string.IsNullOrEmpty(r))
+                .Cast<string>()
+                .Distinct()
+                .ToList();
 
             if (!userRoles.Any())
             {
                 TempData["ErrorMessage"] = "Kullanıcınıza uygun bir rol tanımlanmamış!";
-                return RedirectToAction("Index");
+                return View("Index", model);
             }
 
             // Employee bilgisi varsa session'a ekle
-            if (user.Employee != null)
+            if (user.EmployeeId.HasValue)
             {
-                HttpContext.Session.SetInt32("EmployeeId", user.Employee.EmployeeId);
-                HttpContext.Session.SetString("EmployeeName", $"{user.Employee.FirstName} {user.Employee.LastName}");
+                HttpContext.Session.SetInt32("EmployeeId", user.EmployeeId.Value);
+                HttpContext.Session.SetString("EmployeeName", $"{user.FirstName} {user.LastName}");
             }
 
             // Rol önceliği belirle ve yönlendir
@@ -78,7 +107,6 @@ namespace HR.Mvc.Controllers
             HttpContext.Session.SetString("UserRoles", string.Join(",", userRoles));
 
             TempData["SuccessMessage"] = $"Hoş geldiniz, {user.Username}!";
-
 
             return RedirectByRole(primaryRole);
         }
@@ -140,5 +168,16 @@ namespace HR.Mvc.Controllers
             TempData["SuccessMessage"] = "Başarıyla çıkış yaptınız.";
             return RedirectToAction("Index");
         }
+    }
+
+    public class UserLoginDTO
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; }
+        public string? Email { get; set; }
+        public int? EmployeeId { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? RoleName { get; set; }
     }
 }

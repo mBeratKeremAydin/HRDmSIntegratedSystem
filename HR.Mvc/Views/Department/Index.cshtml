@@ -1,9 +1,9 @@
-﻿@model List<HRDms.Data.Models.Department>
+﻿@model List<HR.Mvc.Models.DepartmentViewModel>
 @{
     Layout = null;
     var userRole = Context.Session.GetString("UserRole");
     var isHRorAdmin = userRole == "HR" || userRole == "Admin";
-    var isDeptManager = userRole == "Department Manager";
+    var isDeptManager = userRole == "Department Manager" || userRole == "DepManager";
 }
 <!DOCTYPE html>
 <html>
@@ -59,11 +59,11 @@
                                     <i class="fas fa-building text-primary"></i> @dept.DepartmentName
                                 </h5>
                                 <p class="text-muted">
-                                    <i class="fas fa-map-marker-alt"></i> @(dept.Location?.LocationName ?? "No Location")
+                                    <i class="fas fa-map-marker-alt"></i> @(dept.LocationName ?? "No Location")
                                 </p>
                                 <hr />
-                                <p><strong>Employees:</strong> @dept.Employees.Count</p>
-                                <p><strong>Manager:</strong> @(dept.Manager != null ? dept.Manager.FirstName + " " + dept.Manager.LastName : "Not Assigned")</p>
+                                <p><strong>Employees:</strong> @dept.EmployeeCount</p>
+                                <p><strong>Manager:</strong> @(dept.ManagerName ?? "Not Assigned")</p>
                             </div>
                             <div class="card-footer">
                                 <a href="@Url.Action("Employees", new { id = dept.DepartmentId })" class="btn btn-sm btn-primary">
