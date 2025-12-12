@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.Employee
+﻿@model HR.Mvc.Models.EmployeeDetailsViewModel
 @{
     Layout = null;
     var userRole = Context.Session.GetString("UserRole");
@@ -56,7 +56,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">@Model.FirstName @Model.LastName</h4>
                     <div>
-                        @if (Model.IsActive)
+                        @if (Model.IsActive == true)
                         {
                             <span class="badge bg-success">Active</span>
                         }
@@ -71,14 +71,14 @@
                 <div class="row">
                     <div class="col-md-6">
                         <p><strong>Employee ID:</strong> @Model.EmployeeId</p>
-                        <p><strong>Position:</strong> @(Model.Job?.JobTitle ?? "Not Specified")</p>
-                        <p><strong>Department:</strong> @(Model.Department?.DepartmentName ?? "Not Specified")</p>
+                        <p><strong>Position:</strong> @(Model.JobTitle ?? "Not Specified")</p>
+                        <p><strong>Department:</strong> @(Model.DepartmentName ?? "Not Specified")</p>
                     </div>
                     <div class="col-md-6">
                         <p><strong>Hire Date:</strong> @(Model.HireDate?.ToString("dd/MM/yyyy") ?? "Not Specified")</p>
                         @if (Model.HireDate.HasValue)
                         {
-                            var days = (DateOnly.FromDateTime(DateTime.Now).DayNumber - Model.HireDate.Value.DayNumber);
+                            var days = (DateTime.Now - Model.HireDate.Value).Days;
                             <p><strong>Tenure:</strong> @days days</p>
                         }
                     </div>
@@ -148,61 +148,57 @@
         </div>
 
         <!-- Manager Information -->
-        @if (Model.Manager != null)
+        @if (!string.IsNullOrEmpty(Model.ManagerFirstName))
         {
             <div class="card mb-3">
                 <div class="card-header bg-info text-white">
                     <h5><i class="fas fa-user-tie"></i> Manager Information</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>Name:</strong> @Model.Manager.FirstName @Model.Manager.LastName</p>
-                    <p><strong>Position:</strong> @(Model.Manager.Job?.JobTitle ?? "Manager")</p>
-                    @if (!string.IsNullOrEmpty(Model.Manager.Email))
+                    <p><strong>Name:</strong> @Model.ManagerFirstName @Model.ManagerLastName</p>
+                    <p><strong>Position:</strong> @(Model.ManagerJobTitle ?? "Manager")</p>
+                    @if (!string.IsNullOrEmpty(Model.ManagerEmail))
                     {
-                        <p><strong>Email:</strong> <a href="mailto:@Model.Manager.Email">@Model.Manager.Email</a></p>
+                        <p><strong>Email:</strong> <a href="mailto:@Model.ManagerEmail">@Model.ManagerEmail</a></p>
                     }
                 </div>
             </div>
         }
 
         <!-- Employment Contract -->
-        @if (Model.EmploymentContracts != null && Model.EmploymentContracts.Any())
+        @if (Model.ActiveContract != null)
         {
-            var activeContract = Model.EmploymentContracts.FirstOrDefault(c => c.IsActive);
-            @if (activeContract != null)
-            {
-                <div class="card mb-3">
-                    <div class="card-header bg-success text-white">
-                        <h5><i class="fas fa-file-contract"></i> Active Employment Contract</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <p><strong>Type:</strong> @activeContract.ContractType</p>
-                            </div>
-                            <div class="col-md-3">
-                                <p><strong>Start Date:</strong> @activeContract.StartDate.ToString("dd/MM/yyyy")</p>
-                            </div>
-                            <div class="col-md-3">
-                                <p>
-                                    <strong>End Date:</strong>
-                                    @if (activeContract.EndDate.HasValue)
-                                    {
-                                        @activeContract.EndDate.Value.ToString("dd/MM/yyyy")
-                                    }
-                                    else
-                                    {
-                                        <span class="text-success">Indefinite</span>
-                                    }
-                                </p>
-                            </div>
-                            <div class="col-md-3">
-                                <p><strong>Salary:</strong> @activeContract.Salary.ToString("N2") TL</p>
-                            </div>
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-file-contract"></i> Active Employment Contract</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <p><strong>Type:</strong> @Model.ActiveContract.ContractType</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Start Date:</strong> @(Model.ActiveContract.StartDate?.ToString("dd/MM/yyyy") ?? "-")</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p>
+                                <strong>End Date:</strong>
+                                @if (Model.ActiveContract.EndDate.HasValue)
+                                {
+                                    @Model.ActiveContract.EndDate.Value.ToString("dd/MM/yyyy")
+                                }
+                                else
+                                {
+                                    <span class="text-success">Indefinite</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Salary:</strong> @(Model.ActiveContract.Salary?.ToString("N2") ?? "0.00") TL</p>
                         </div>
                     </div>
                 </div>
-            }
+            </div>
         }
     </div>
 

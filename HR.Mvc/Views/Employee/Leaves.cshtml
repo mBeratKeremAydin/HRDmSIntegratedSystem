@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.Employee
+﻿@model HR.Mvc.Models.EmployeeLeavesViewModel
 @{
     Layout = null;
     var userRole = Context.Session.GetString("UserRole");
@@ -16,26 +16,34 @@
     <div class="container">
         <div class="d-flex justify-content-between mb-3">
             <h2><i class="fas fa-calendar-alt"></i> Leave Requests</h2>
-            <a href="@backUrl" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back
-            </a>
+            <div>
+                @if (!isHRorAdmin)
+                {
+                    <a href="@Url.Action("Create", "LeaveRequests")" class="btn btn-primary me-2">
+                        <i class="fas fa-plus"></i> New Request
+                    </a>
+                }
+                <a href="@backUrl" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
         </div>
 
         <!-- Employee Info -->
         <div class="card mb-3">
             <div class="card-header bg-success text-white">
                 <h4>@Model.FirstName @Model.LastName</h4>
-                <small>@(Model.Job?.JobTitle ?? "No Position") | ID: @Model.EmployeeId</small>
+                <small>@(Model.JobTitle ?? "No Position") | ID: @Model.EmployeeId</small>
             </div>
         </div>
 
         <!-- Statistics -->
         @{
-            var leaves = Model.LeaveRequests?.OrderByDescending(l => l.StartDate).ToList() ?? new List<HRDms.Data.Models.LeaveRequest>();
+            var leaves = Model.LeaveRequests;
             var totalLeaves = leaves.Count;
             var approvedLeaves = leaves.Count(l => l.Status == "Approved");
             var pendingLeaves = leaves.Count(l => l.Status == "Pending");
-            var totalDays = leaves.Where(l => l.Status == "Approved").Sum(l => l.EndDate.DayNumber - l.StartDate.DayNumber + 1);
+            var totalDays = leaves.Where(l => l.Status == "Approved").Sum(l => (l.EndDate - l.StartDate).Days + 1);
         }
 
         <div class="row g-3 mb-3">
@@ -83,12 +91,12 @@
             <div class="row g-3">
                 @foreach (var leave in leaves)
                 {
-                    var days = leave.EndDate.DayNumber - leave.StartDate.DayNumber + 1;
+                    var days = (leave.EndDate - leave.StartDate).Days + 1;
 
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <strong>@(leave.LeaveType?.TypeName ?? "Leave")</strong>
+                                <strong>@(leave.LeaveTypeName ?? "Leave")</strong>
                                 @if (leave.Status == "Approved")
                                 {
                                     <span class="badge bg-success">Approved</span>

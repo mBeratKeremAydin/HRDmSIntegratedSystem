@@ -1,4 +1,4 @@
-﻿@model List<HRDms.Data.Models.Employee>
+﻿@model List<HR.Mvc.Models.HREmployeeViewModel>
 @{
     Layout = null;
 }
@@ -54,7 +54,7 @@
                                 <td>@emp.FirstName @emp.LastName</td>
                                 <td>@emp.Email</td>
                                 <td>@emp.PhoneNumber</td>
-                                <td>@(emp.Job?.JobTitle ?? "N/A")</td>
+                                <td>@(emp.JobTitle ?? "N/A")</td>
                                 <td>
                                     @if (emp.IsActive)
                                     {

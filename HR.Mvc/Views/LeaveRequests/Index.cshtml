@@ -1,4 +1,4 @@
-﻿@model List<HRDms.Data.Models.LeaveRequest>
+﻿@model List<HR.Mvc.Models.LeaveRequestViewModel>
 @{
     Layout = null;
 }
@@ -119,15 +119,15 @@
                         <tbody>
                             @foreach (var leave in Model)
                             {
-                                var days = leave.EndDate.DayNumber - leave.StartDate.DayNumber + 1;
+                                var days = (leave.EndDate - leave.StartDate).Days + 1;
 
                                 <tr>
                                     <td>#@leave.RequestId</td>
                                     <td>
-                                        <strong>@leave.Employee?.FirstName @leave.Employee?.LastName</strong><br />
-                                        <small class="text-muted">@(leave.Employee?.Department?.DepartmentName ?? "N/A")</small>
+                                        <strong>@leave.EmployeeFirstName @leave.EmployeeLastName</strong><br />
+                                        <small class="text-muted">@(leave.DepartmentName ?? "N/A")</small>
                                     </td>
-                                    <td>@(leave.LeaveType?.TypeName ?? "N/A")</td>
+                                    <td>@(leave.LeaveTypeName ?? "N/A")</td>
                                     <td>@leave.StartDate.ToString("dd/MM/yyyy")</td>
                                     <td>@leave.EndDate.ToString("dd/MM/yyyy")</td>
                                     <td><strong>@days</strong> days</td>

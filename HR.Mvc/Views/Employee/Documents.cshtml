@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.Employee
+﻿@model HR.Mvc.Models.EmployeeDocumentsViewModel
 @{
     Layout = null;
     var userRole = Context.Session.GetString("UserRole");
@@ -378,18 +378,18 @@
                     <div class="employee-name">@Model.FirstName @Model.LastName</div>
                     <div class="employee-details">
                         <i class="fas fa-id-badge"></i> ID: @Model.EmployeeId &nbsp;|&nbsp;
-                        <i class="fas fa-briefcase"></i> @(Model.Job?.JobTitle ?? "Pozisyon Belirtilmemiş")
+                        <i class="fas fa-briefcase"></i> @(Model.JobTitle ?? "Pozisyon Belirtilmemiş")
                     </div>
                 </div>
             </div>
         </div>
 
         @{
-            var documents = Model.Documents?.OrderByDescending(d => d.CreatedDate).ToList() ?? new List<HRDms.Data.Models.Document>();
+            var documents = Model.Documents;
             var totalDocs = documents.Count;
             var activeDocs = documents.Count(d => d.IsActive);
-            var approvedDocs = documents.Count(d => d.CurrentStatus == "Approved");
-            var pendingDocs = documents.Count(d => d.CurrentStatus == "Pending");
+            var approvedDocs = documents.Count(d => d.Status == "Approved");
+            var pendingDocs = documents.Count(d => d.Status == "Pending");
         }
 
         <div class="stats-grid">
@@ -431,10 +431,10 @@
             <div class="documents-grid">
                 @foreach (var doc in documents)
                 {
-                    var statusClass = doc.CurrentStatus == "Approved" ? "approved" : doc.CurrentStatus == "Pending" ? "pending" : "draft";
-                    var statusText = doc.CurrentStatus == "Approved" ? "Onaylandı" : doc.CurrentStatus == "Pending" ? "Bekliyor" : "Taslak";
-                    var statusIcon = doc.CurrentStatus == "Approved" ? "check-circle" : doc.CurrentStatus == "Pending" ? "clock" : "file-alt";
-                    var iconColor = doc.CurrentStatus == "Approved" ? "#38ef7d" : doc.CurrentStatus == "Pending" ? "#fee140" : "#fa709a";
+                    var statusClass = doc.Status == "Approved" ? "approved" : doc.Status == "Pending" ? "pending" : "draft";
+                    var statusText = doc.Status == "Approved" ? "Onaylandı" : doc.Status == "Pending" ? "Bekliyor" : "Taslak";
+                    var statusIcon = doc.Status == "Approved" ? "check-circle" : doc.Status == "Pending" ? "clock" : "file-alt";
+                    var iconColor = doc.Status == "Approved" ? "#38ef7d" : doc.Status == "Pending" ? "#fee140" : "#fa709a";
 
                     <div class="document-card @statusClass">
                         <div class="document-icon" style="background: linear-gradient(135deg, @iconColor 0%, @iconColor 100%);">
@@ -445,10 +445,10 @@
                             @(doc.Title ?? "Başlık Belirtilmemiş")
                         </div>
 
-                        @if (!string.IsNullOrEmpty(doc.DocumentDescription))
+                        @if (!string.IsNullOrEmpty(doc.Description))
                         {
                             <p style="font-size: 0.9rem; color: #718096; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                @doc.DocumentDescription
+                                @doc.Description
                             </p>
                         }
 
@@ -458,11 +458,11 @@
                                 @doc.CreatedDate.ToString("dd MMM yyyy")
                             </div>
 
-                            @if (doc.Category != null)
+                            @if (!string.IsNullOrEmpty(doc.CategoryName))
                             {
                                 <div class="meta-item">
                                     <i class="fas fa-folder"></i>
-                                    @doc.Category.CategoryName
+                                    @doc.CategoryName
                                 </div>
                             }
 

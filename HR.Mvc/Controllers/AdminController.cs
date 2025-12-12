@@ -1,5 +1,6 @@
 ﻿using HRDms.Data.Context;
 using HRDms.Data.Models;
+using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -61,24 +62,32 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            const string sqlFindHR = "SELECT * FROM Departments WHERE DepartmentName = 'HR'";
-            var hrDepartment = _context.Departments
-                .FromSqlRaw(sqlFindHR)
-                .AsEnumerable()
-                .FirstOrDefault();
+            // HR Departman ID'sini bul
+            const string sqlFindHRId = "SELECT DepartmentID AS Value FROM Departments WHERE DepartmentName = 'HR'";
+            var hrDepartmentId = _context.Database.SqlQueryRaw<int>(sqlFindHRId).AsEnumerable().FirstOrDefault();
 
-            if (hrDepartment == null)
+            if (hrDepartmentId == 0)
             {
                 TempData["ErrorMessage"] = "HR departmanı bulunamadı!";
                 return RedirectToAction("Index");
             }
 
-            const string sqlHREmployees = "SELECT * FROM Employees WHERE DepartmentID = {0}";
-            var hrEmployees = _context.Employees
-                .FromSqlRaw(sqlHREmployees, hrDepartment.DepartmentId)
-                .Include(e => e.Job)
-                .Include(e => e.User)
-                .Include(e => e.Department)
+            // HR Çalışanlarını ve JobTitle'ı getir
+            string sqlHREmployees = @"
+                SELECT 
+                    e.EmployeeID, 
+                    e.FirstName, 
+                    e.LastName, 
+                    e.Email, 
+                    e.PhoneNumber, 
+                    j.JobTitle, 
+                    e.IsActive 
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                WHERE e.DepartmentID = {0}";
+
+            var hrEmployees = _context.Database
+                .SqlQueryRaw<HREmployeeViewModel>(sqlHREmployees, hrDepartmentId)
                 .ToList();
 
             return View(hrEmployees);
@@ -300,7 +309,6 @@ namespace HR.Mvc.Controllers
             const string sqlFindEmp = "SELECT * FROM Employees WHERE EmployeeID = {0}";
             var employee = _context.Employees
                 .FromSqlRaw(sqlFindEmp, id)
-                .Include(e => e.User)
                 .AsEnumerable()
                 .FirstOrDefault();
 
@@ -322,13 +330,13 @@ namespace HR.Mvc.Controllers
                 const string sqlDeleteEmp = "DELETE FROM Employees WHERE EmployeeID = {0}";
                 _context.Database.ExecuteSqlRaw(sqlDeleteEmp, id);
 
-                // 2) UserRoles kayıtlarını sil
-                const string sqlDeleteUserRoles = "DELETE FROM UserRoles WHERE UserID = {0}";
-                _context.Database.ExecuteSqlRaw(sqlDeleteUserRoles, employee.UserId);
-
-                // 3) Kullanıcıyı sil
-                if (employee.User != null)
+                if (employee.UserId.HasValue)
                 {
+                    // 2) UserRoles kayıtlarını sil
+                    const string sqlDeleteUserRoles = "DELETE FROM UserRoles WHERE UserID = {0}";
+                    _context.Database.ExecuteSqlRaw(sqlDeleteUserRoles, employee.UserId);
+
+                    // 3) Kullanıcıyı sil
                     const string sqlDeleteUser = "DELETE FROM Users WHERE UserID = {0}";
                     _context.Database.ExecuteSqlRaw(sqlDeleteUser, employee.UserId);
                 }

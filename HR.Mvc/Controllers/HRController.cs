@@ -15,10 +15,8 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Index() // HR Dashboard
         {
-            // Çalışan listesi (aktifler) – SQL + Include
-            const string sqlEmp = @"
-                SELECT * FROM Employees
-                WHERE IsActive = 1";
+            // Çalışan listesi (Tümü) – SQL + Include
+            const string sqlEmp = @"SELECT * FROM Employees";
 
             var emp = _context.Employees
                 .FromSqlRaw(sqlEmp)
@@ -124,6 +122,10 @@ namespace HR.Mvc.Controllers
                 }
 
                 _context.SaveChanges();
+
+                // Employee kaydını sil
+                const string sqlDeleteEmp = @"DELETE FROM Employees WHERE EmployeeID = {0}";
+                _context.Database.ExecuteSqlRaw(sqlDeleteEmp, user.Employee.EmployeeId);
             }
 
             // 2) Kullanıcıyı sil – önce UserRoles, sonra User

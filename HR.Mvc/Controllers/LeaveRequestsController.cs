@@ -1,7 +1,10 @@
 ﻿using HRDms.Data.Context;
 using HRDms.Data.Models;
+using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace HR.Mvc.Controllers
 {
@@ -16,39 +19,56 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Index(string? status = null, int? employeeId = null)
         {
-            // Tüm izin taleplerini getir (İlişkili verilerle birlikte)
-            var query = _context.LeaveRequests
-                .Include(l => l.Employee)
-                    .ThenInclude(e => e.Department)
-                .Include(l => l.Employee)
-                    .ThenInclude(e => e.Job)
-                .Include(l => l.LeaveType)
-                .Include(l => l.ApprovedByUser)
-                .AsQueryable();
+            var sql = @"
+                SELECT 
+                    lr.RequestId,
+                    lr.EmployeeId,
+                    e.FirstName AS EmployeeFirstName,
+                    e.LastName AS EmployeeLastName,
+                    d.DepartmentName,
+                    j.JobTitle,
+                    e.Email,
+                    lt.TypeName AS LeaveTypeName,
+                    CAST(lr.StartDate AS datetime) AS StartDate,
+                    CAST(lr.EndDate AS datetime) AS EndDate,
+                    lr.Status,
+                    lr.Reason,
+                    lr.ApprovedByUserId,
+                    u.Username AS ApprovedByUserName
+                FROM LeaveRequests lr
+                INNER JOIN Employees e ON lr.EmployeeId = e.EmployeeId
+                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
+                LEFT JOIN Jobs j ON e.JobId = j.JobId
+                INNER JOIN LeaveTypes lt ON lr.LeaveTypeId = lt.LeaveTypeId
+                LEFT JOIN Users u ON lr.ApprovedByUserId = u.UserId
+                WHERE 1=1";
 
-            // Status filtreleme
+            var parameters = new List<object>();
+
             if (!string.IsNullOrEmpty(status))
             {
-                query = query.Where(l => l.Status == status);
-                ViewBag.CurrentStatus = status;
+                sql += " AND lr.Status = {0}";
+                parameters.Add(status);
             }
 
-            // Employee filtreleme
             if (employeeId.HasValue)
             {
-                query = query.Where(l => l.EmployeeId == employeeId.Value);
-                ViewBag.CurrentEmployeeId = employeeId;
+                sql += " AND lr.EmployeeId = {" + parameters.Count + "}";
+                parameters.Add(employeeId.Value);
             }
 
-            var leaveRequests = query
-                .OrderByDescending(l => l.StartDate)
-                .ToList();
+            sql += " ORDER BY lr.StartDate DESC";
 
-            // İstatistikler için
-            ViewBag.TotalRequests = _context.LeaveRequests.Count();
-            ViewBag.PendingRequests = _context.LeaveRequests.Count(l => l.Status == "Pending");
-            ViewBag.ApprovedRequests = _context.LeaveRequests.Count(l => l.Status == "Approved");
-            ViewBag.RejectedRequests = _context.LeaveRequests.Count(l => l.Status == "Rejected");
+            var leaveRequests = _context.Database.SqlQueryRaw<LeaveRequestViewModel>(sql, parameters.ToArray()).ToList();
+
+            ViewBag.CurrentStatus = status;
+            ViewBag.CurrentEmployeeId = employeeId;
+
+            // İstatistikler
+            ViewBag.TotalRequests = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) as Value FROM LeaveRequests").AsEnumerable().FirstOrDefault();
+            ViewBag.PendingRequests = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) as Value FROM LeaveRequests WHERE Status = 'Pending'").AsEnumerable().FirstOrDefault();
+            ViewBag.ApprovedRequests = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) as Value FROM LeaveRequests WHERE Status = 'Approved'").AsEnumerable().FirstOrDefault();
+            ViewBag.RejectedRequests = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) as Value FROM LeaveRequests WHERE Status = 'Rejected'").AsEnumerable().FirstOrDefault();
 
             // Çalışan listesi (filtreleme için)
             ViewBag.Employees = _context.Employees
@@ -59,72 +79,65 @@ namespace HR.Mvc.Controllers
             return View(leaveRequests);
         }
 
-        // Onaylama
         [HttpPost]
         public IActionResult Approve(int id)
         {
-            var leave = _context.LeaveRequests.Find(id);
-            if (leave != null)
-            {
-                leave.Status = "Approved";
-                
-                // Session'dan giriş yapan kullanıcının ID'sini al
-                var userId = HttpContext.Session.GetInt32("UserId");
-                if (userId.HasValue)
-                {
-                    leave.ApprovedByUserId = userId.Value;
-                }
-                
-                _context.SaveChanges();
-                TempData["SuccessMessage"] = "İzin talebi onaylandı.";
-            }
+            var userId = HttpContext.Session.GetInt32("UserId");
+            var sql = "UPDATE LeaveRequests SET Status = 'Approved', ApprovedByUserId = {0} WHERE RequestId = {1}";
+            _context.Database.ExecuteSqlRaw(sql, userId ?? (object)DBNull.Value, id);
+            
+            TempData["SuccessMessage"] = "İzin talebi onaylandı.";
             return RedirectToAction("Index");
         }
 
-        // Reddetme
         [HttpPost]
         public IActionResult Reject(int id)
         {
-            var leave = _context.LeaveRequests.Find(id);
-            if (leave != null)
-            {
-                leave.Status = "Rejected";
-                
-                // Session'dan giriş yapan kullanıcının ID'sini al
-                var userId = HttpContext.Session.GetInt32("UserId");
-                if (userId.HasValue)
-                {
-                    leave.ApprovedByUserId = userId.Value;
-                }
-                
-                _context.SaveChanges();
-                TempData["SuccessMessage"] = "İzin talebi reddedildi.";
-            }
+            var userId = HttpContext.Session.GetInt32("UserId");
+            var sql = "UPDATE LeaveRequests SET Status = 'Rejected', ApprovedByUserId = {0} WHERE RequestId = {1}";
+            _context.Database.ExecuteSqlRaw(sql, userId ?? (object)DBNull.Value, id);
+
+            TempData["SuccessMessage"] = "İzin talebi reddedildi.";
             return RedirectToAction("Index");
         }
 
-        // Detay sayfası
         public IActionResult Details(int id)
         {
-            var leave = _context.LeaveRequests
-                .Include(l => l.Employee)
-                    .ThenInclude(e => e.Department)
-                .Include(l => l.Employee)
-                    .ThenInclude(e => e.Job)
-                .Include(l => l.LeaveType)
-                .Include(l => l.ApprovedByUser)
-                .FirstOrDefault(l => l.RequestId == id);
+            var sql = @"
+                SELECT 
+                    lr.RequestId,
+                    lr.EmployeeId,
+                    e.FirstName AS EmployeeFirstName,
+                    e.LastName AS EmployeeLastName,
+                    d.DepartmentName,
+                    j.JobTitle,
+                    e.Email,
+                    lt.TypeName AS LeaveTypeName,
+                    CAST(lr.StartDate AS datetime) AS StartDate,
+                    CAST(lr.EndDate AS datetime) AS EndDate,
+                    lr.Status,
+                    lr.Reason,
+                    lr.ApprovedByUserId,
+                    u.Username AS ApprovedByUserName
+                FROM LeaveRequests lr
+                INNER JOIN Employees e ON lr.EmployeeId = e.EmployeeId
+                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
+                LEFT JOIN Jobs j ON e.JobId = j.JobId
+                INNER JOIN LeaveTypes lt ON lr.LeaveTypeId = lt.LeaveTypeId
+                LEFT JOIN Users u ON lr.ApprovedByUserId = u.UserId
+                WHERE lr.RequestId = {0}";
+
+            var leave = _context.Database.SqlQueryRaw<LeaveRequestViewModel>(sql, id).AsEnumerable().FirstOrDefault();
 
             if (leave == null)
                 return NotFound();
 
             return View(leave);
         }
-        // İzin Talebi Oluşturma - GET
+
         [HttpGet]
         public IActionResult Create()
         {
-            // Session kontrolü
             var userId = HttpContext.Session.GetInt32("UserId");
             var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
@@ -134,7 +147,6 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Çalışan bilgisini getir
             var employee = _context.Employees
                 .Include(e => e.Department)
                 .Include(e => e.Job)
@@ -146,26 +158,22 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Employee");
             }
 
-            // İzin türlerini getir
             ViewBag.LeaveTypes = _context.LeaveTypes
                 .Select(lt => new { lt.LeaveTypeId, lt.TypeName, lt.DaysAllowed })
                 .ToList();
 
-            // Çalışan bilgisini ViewBag'e ekle
             ViewBag.Employee = employee;
             ViewBag.EmployeeId = employeeId;
 
             return View();
         }
 
-        // İzin Talebi Oluşturma - POST
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Create(int leaveTypeId, DateOnly startDate, DateOnly endDate, string? reason)
+        public IActionResult Create(int leaveTypeId, DateTime startDate, DateTime endDate, string? reason)
         {
             try
             {
-                // Session kontrolü
                 var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
                 if (employeeId == null)
@@ -174,7 +182,6 @@ namespace HR.Mvc.Controllers
                     return RedirectToAction("Index", "Login");
                 }
 
-                // Tarih kontrolü
                 if (startDate >= endDate)
                 {
                     TempData["ErrorMessage"] = "Bitiş tarihi, başlangıç tarihinden sonra olmalıdır!";
@@ -182,27 +189,18 @@ namespace HR.Mvc.Controllers
                     return View();
                 }
 
-                // Geçmiş tarih kontrolü
-                if (startDate < DateOnly.FromDateTime(DateTime.Now))
+                if (startDate < DateTime.Now.Date)
                 {
                     TempData["ErrorMessage"] = "Geçmiş tarih için izin talebi oluşturamazsınız!";
                     ReloadCreateDropdowns(employeeId.Value);
                     return View();
                 }
 
-                // İzin talebini oluştur
-                var leaveRequest = new LeaveRequest
-                {
-                    EmployeeId = employeeId.Value,
-                    LeaveTypeId = leaveTypeId,
-                    StartDate = startDate,
-                    EndDate = endDate,
-                    Reason = reason,
-                    Status = "Pending" // Varsayılan olarak beklemede
-                };
+                var sql = @"
+                    INSERT INTO LeaveRequests (EmployeeId, LeaveTypeId, StartDate, EndDate, Reason, Status)
+                    VALUES ({0}, {1}, {2}, {3}, {4}, 'Pending')";
 
-                _context.LeaveRequests.Add(leaveRequest);
-                _context.SaveChanges();
+                _context.Database.ExecuteSqlRaw(sql, employeeId.Value, leaveTypeId, startDate, endDate, reason ?? (object)DBNull.Value);
 
                 TempData["SuccessMessage"] = "İzin talebiniz başarıyla oluşturuldu! Onay bekliyor.";
                 return RedirectToAction("Index", "Employee");
@@ -229,6 +227,5 @@ namespace HR.Mvc.Controllers
             ViewBag.EmployeeId = employeeId;
         }
     }
-
-    }
+}
 

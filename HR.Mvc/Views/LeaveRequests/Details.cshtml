@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.LeaveRequest
+﻿@model HR.Mvc.Models.LeaveRequestViewModel
 @{
     Layout = null;
 }
@@ -19,7 +19,7 @@
         </div>
 
         @{
-            var days = Model.EndDate.DayNumber - Model.StartDate.DayNumber + 1;
+            var days = (Model.EndDate - Model.StartDate).Days + 1;
         }
 
         <!-- Status Card -->
@@ -71,11 +71,11 @@
                         <h5><i class="fas fa-user"></i> Employee Information</h5>
                     </div>
                     <div class="card-body">
-                        <p><strong>Name:</strong> @Model.Employee?.FirstName @Model.Employee?.LastName</p>
+                        <p><strong>Name:</strong> @Model.EmployeeFirstName @Model.EmployeeLastName</p>
                         <p><strong>ID:</strong> @Model.EmployeeId</p>
-                        <p><strong>Department:</strong> @(Model.Employee?.Department?.DepartmentName ?? "N/A")</p>
-                        <p><strong>Position:</strong> @(Model.Employee?.Job?.JobTitle ?? "N/A")</p>
-                        <p><strong>Email:</strong> @(Model.Employee?.Email ?? "N/A")</p>
+                        <p><strong>Department:</strong> @(Model.DepartmentName ?? "N/A")</p>
+                        <p><strong>Position:</strong> @(Model.JobTitle ?? "N/A")</p>
+                        <p><strong>Email:</strong> @(Model.Email ?? "N/A")</p>
                     </div>
                 </div>
             </div>
@@ -87,7 +87,7 @@
                         <h5><i class="fas fa-calendar-alt"></i> Leave Details</h5>
                     </div>
                     <div class="card-body">
-                        <p><strong>Leave Type:</strong> @(Model.LeaveType?.TypeName ?? "N/A")</p>
+                        <p><strong>Leave Type:</strong> @(Model.LeaveTypeName ?? "N/A")</p>
                         <p><strong>Start Date:</strong> @Model.StartDate.ToString("dd/MM/yyyy")</p>
                         <p><strong>End Date:</strong> @Model.EndDate.ToString("dd/MM/yyyy")</p>
                         <p><strong>Duration:</strong> @days days</p>
@@ -125,7 +125,7 @@
             }
 
             <!-- Approval Info -->
-            @if (Model.ApprovedByUser != null)
+            @if (!string.IsNullOrEmpty(Model.ApprovedByUserName))
             {
                 <div class="col-12">
                     <div class="card">
@@ -133,7 +133,7 @@
                             <h5><i class="fas fa-user-check"></i> Approval Information</h5>
                         </div>
                         <div class="card-body">
-                            <p><strong>@(Model.Status == "Approved" ? "Approved" : "Rejected") By:</strong> @Model.ApprovedByUser.Username</p>
+                            <p><strong>@(Model.Status == "Approved" ? "Approved" : "Rejected") By:</strong> @Model.ApprovedByUserName</p>
                         </div>
                     </div>
                 </div>

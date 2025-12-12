@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.Employee
+﻿@model HR.Mvc.Models.EmployeePerformanceViewModel
 @{
     Layout = null;
     var userRole = Context.Session.GetString("UserRole");
@@ -25,15 +25,15 @@
         <div class="card mb-3">
             <div class="card-header bg-warning">
                 <h4>@Model.FirstName @Model.LastName</h4>
-                <small>@(Model.Job?.JobTitle ?? "No Position") | ID: @Model.EmployeeId</small>
+                <small>@(Model.JobTitle ?? "No Position") | ID: @Model.EmployeeId</small>
             </div>
         </div>
 
         <!-- Statistics -->
         @{
-            var reviews = Model.PerformanceReviewEmployees?.OrderByDescending(r => r.ReviewDate).ToList() ?? new List<HRDms.Data.Models.PerformanceReview>();
+            var reviews = Model.Reviews;
             var totalReviews = reviews.Count;
-            var avgScore = reviews.Any() ? reviews.Average(r => r.Score) : 0;
+            var avgScore = reviews.Any() ? reviews.Average(r => r.Score ?? 0) : 0;
             var lastReview = reviews.FirstOrDefault();
         }
 
@@ -60,7 +60,7 @@
                 <div class="card text-center">
                     <div class="card-body">
                         <i class="fas fa-trophy fa-3x text-success mb-2"></i>
-                        <h3>@(lastReview?.Score.ToString() ?? "N/A")</h3>
+                        <h3>@(lastReview?.Score?.ToString() ?? "N/A")</h3>
                         <p class="text-muted">Last Score</p>
                     </div>
                 </div>
@@ -73,25 +73,26 @@
             <div class="row g-3">
                 @foreach (var review in reviews)
                 {
-                    var scoreClass = review.Score >= 85 ? "success" : review.Score >= 70 ? "info" : review.Score >= 50 ? "warning" : "danger";
-                    var scoreLabel = review.Score >= 85 ? "Excellent" : review.Score >= 70 ? "Good" : review.Score >= 50 ? "Average" : "Needs Improvement";
+                    var score = review.Score ?? 0;
+                    var scoreClass = score >= 85 ? "success" : score >= 70 ? "info" : score >= 50 ? "warning" : "danger";
+                    var scoreLabel = score >= 85 ? "Excellent" : score >= 70 ? "Good" : score >= 50 ? "Average" : "Needs Improvement";
 
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header bg-@scoreClass text-white d-flex justify-content-between">
-                                <span>@(review.ReviewDate?.ToString("dd/MM/yyyy") ?? "No Date")</span>
-                                <span class="badge bg-light text-dark">@review.Score / 100</span>
+                                <span>@(review.ReviewDate?.ToString("dd/MM/yyyy") ?? "-")</span>
+                                <span class="badge bg-light text-dark">@score / 100</span>
                             </div>
                             <div class="card-body">
                                 <h5 class="text-@scoreClass">@scoreLabel</h5>
                                 <div class="progress mb-3" style="height: 20px;">
-                                    <div class="progress-bar bg-@scoreClass" role="progressbar" style="width: @review.Score%">
-                                        @review.Score%
+                                    <div class="progress-bar bg-@scoreClass" role="progressbar" style="width: @score%">
+                                        @score%
                                     </div>
                                 </div>
-                                @if (review.Reviewer != null)
+                                @if (!string.IsNullOrEmpty(review.ReviewerName))
                                 {
-                                    <p><strong>Reviewer:</strong> @review.Reviewer.FirstName @review.Reviewer.LastName</p>
+                                    <p><strong>Reviewer:</strong> @review.ReviewerName</p>
                                 }
                                 @if (!string.IsNullOrEmpty(review.Notes))
                                 {

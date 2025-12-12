@@ -1,5 +1,6 @@
 ﻿using HRDms.Data.Context;
 using HRDms.Data.Models;
+using HR.Mvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -32,48 +33,64 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // Employee bilgisini getir (SQL + Include)
-            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-            var employee = _context.Employees
-                .FromSqlRaw(sqlEmp, employeeId.Value)
-                .Include(e => e.Department)
-                .Include(e => e.Job)
-                .Include(e => e.Manager)
-                .Include(e => e.EmploymentContracts.Where(c => c.IsActive))
-                .Include(e => e.LeaveRequests)
-                    .ThenInclude(l => l.LeaveType)
-                .Include(e => e.Attendances)
-                .Include(e => e.PerformanceReviewEmployees)
-                .Include(e => e.Documents)
+            // 1. Basic Info
+            const string sqlInfo = @"
+                SELECT e.EmployeeID, e.FirstName, e.LastName, j.JobTitle, d.DepartmentName
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
+                WHERE e.EmployeeID = {0}";
+
+            var basicInfo = _context.Database.SqlQueryRaw<EmployeeBasicInfoDTO>(sqlInfo, employeeId.Value)
                 .AsEnumerable()
                 .FirstOrDefault();
 
-            if (employee == null)
+            if (basicInfo == null)
             {
                 TempData["ErrorMessage"] = "Çalışan bilgisi bulunamadı!";
                 return RedirectToAction("Index", "Login");
             }
 
-            // İstatistikler için hesaplamalar (in-memory)
-            ViewBag.TotalLeaveRequests = employee.LeaveRequests.Count;
-            ViewBag.PendingLeaveRequests = employee.LeaveRequests.Count(l => l.Status == "Pending");
-            ViewBag.ApprovedLeaveRequests = employee.LeaveRequests.Count(l => l.Status == "Approved");
-            ViewBag.TotalAttendanceDays = employee.Attendances.Count;
-            ViewBag.TotalDocuments = employee.Documents.Count;
-            ViewBag.PerformanceReviews = employee.PerformanceReviewEmployees.Count;
+            var dashboardModel = new EmployeeDashboardViewModel
+            {
+                EmployeeId = basicInfo.EmployeeId,
+                FirstName = basicInfo.FirstName,
+                LastName = basicInfo.LastName,
+                JobTitle = basicInfo.JobTitle,
+                DepartmentName = basicInfo.DepartmentName
+            };
 
-            // Son izin talebi
-            ViewBag.LastLeaveRequest = employee.LeaveRequests
-                .OrderByDescending(l => l.StartDate)
-                .FirstOrDefault();
+            // 2. Counts
+            dashboardModel.TotalLeaveRequests = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM LeaveRequests WHERE EmployeeID = {0}", employeeId.Value).AsEnumerable().First();
+            dashboardModel.PendingLeaveRequests = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM LeaveRequests WHERE EmployeeID = {0} AND Status = 'Pending'", employeeId.Value).AsEnumerable().First();
+            dashboardModel.ApprovedLeaveRequests = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM LeaveRequests WHERE EmployeeID = {0} AND Status = 'Approved'", employeeId.Value).AsEnumerable().First();
+            dashboardModel.TotalAttendanceDays = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM Attendances WHERE EmployeeID = {0}", employeeId.Value).AsEnumerable().First();
+            dashboardModel.TotalDocuments = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM Documents WHERE OwnerEmployeeId = {0}", employeeId.Value).AsEnumerable().First();
+            dashboardModel.PerformanceReviews = _context.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM PerformanceReviews WHERE EmployeeID = {0}", employeeId.Value).AsEnumerable().First();
 
-            // Bu ay devamsızlık
             var currentMonth = DateTime.Now.Month;
             var currentYear = DateTime.Now.Year;
-            ViewBag.CurrentMonthAttendance = employee.Attendances
-                .Count(a => a.Date.HasValue && a.Date.Value.Month == currentMonth && a.Date.Value.Year == currentYear);
+            dashboardModel.CurrentMonthAttendance = _context.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) FROM Attendances WHERE EmployeeID = {0} AND MONTH(Date) = {1} AND YEAR(Date) = {2}", 
+                employeeId.Value, currentMonth, currentYear).AsEnumerable().First();
 
-            return View(employee);
+            // 3. Recent Leave Requests
+            var sqlLeaves = @"
+                SELECT TOP 5 lt.TypeName, lr.StartDate, lr.EndDate, lr.Status, lr.Reason
+                FROM LeaveRequests lr
+                LEFT JOIN LeaveTypes lt ON lr.LeaveTypeID = lt.LeaveTypeID
+                WHERE lr.EmployeeID = {0}
+                ORDER BY lr.StartDate DESC";
+
+            dashboardModel.RecentLeaveRequests = _context.Database.SqlQueryRaw<DashboardLeaveRequestViewModel>(sqlLeaves, employeeId.Value).ToList();
+
+            // ViewBags for compatibility (optional, but View will be updated)
+            ViewBag.TotalLeaveRequests = dashboardModel.TotalLeaveRequests;
+            ViewBag.PendingLeaveRequests = dashboardModel.PendingLeaveRequests;
+            ViewBag.CurrentMonthAttendance = dashboardModel.CurrentMonthAttendance;
+            ViewBag.TotalDocuments = dashboardModel.TotalDocuments;
+
+            return View(dashboardModel);
         }
 
         public IActionResult Details(int id)
@@ -88,21 +105,60 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index");
             }
 
-            const string sql = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-            var emp = _context.Employees
-                .FromSqlRaw(sql, id)
-                .Include(e => e.Department)
-                    .ThenInclude(d => d.Manager)
-                .Include(e => e.Job)
-                .Include(e => e.Manager)
-                .Include(e => e.EmploymentContracts)
+            const string sql = @"
+                SELECT 
+                    e.EmployeeID, e.FirstName, e.LastName, e.Email, e.PhoneNumber, e.IdentityNumber, e.IsActive, e.HireDate,
+                    j.JobTitle,
+                    d.DepartmentName,
+                    m.FirstName AS ManagerFirstName, m.LastName AS ManagerLastName, m.Email AS ManagerEmail,
+                    mj.JobTitle AS ManagerJobTitle
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
+                LEFT JOIN Employees m ON e.ManagerID = m.EmployeeID
+                LEFT JOIN Jobs mj ON m.JobID = mj.JobID
+                WHERE e.EmployeeID = {0}";
+
+            var empDto = _context.Database.SqlQueryRaw<EmployeeDetailsDto>(sql, id)
                 .AsEnumerable()
                 .FirstOrDefault();
 
-            if (emp == null)
+            if (empDto == null)
+            {
                 return NotFound();
+            }
 
-            return View(emp);
+            var empDetails = new EmployeeDetailsViewModel
+            {
+                EmployeeId = empDto.EmployeeId,
+                FirstName = empDto.FirstName,
+                LastName = empDto.LastName,
+                Email = empDto.Email,
+                PhoneNumber = empDto.PhoneNumber,
+                IdentityNumber = empDto.IdentityNumber,
+                IsActive = empDto.IsActive,
+                HireDate = empDto.HireDate,
+                JobTitle = empDto.JobTitle,
+                DepartmentName = empDto.DepartmentName,
+                ManagerFirstName = empDto.ManagerFirstName,
+                ManagerLastName = empDto.ManagerLastName,
+                ManagerEmail = empDto.ManagerEmail,
+                ManagerJobTitle = empDto.ManagerJobTitle
+            };
+
+            // Active Contract
+            const string sqlContract = @"
+                SELECT TOP 1 ContractType, StartDate, EndDate, Salary
+                FROM EmploymentContracts
+                WHERE EmployeeID = {0} AND IsActive = 1";
+            
+            var contract = _context.Database.SqlQueryRaw<EmploymentContractViewModel>(sqlContract, id)
+                .AsEnumerable()
+                .FirstOrDefault();
+            
+            empDetails.ActiveContract = contract;
+
+            return View(empDetails);
         }
 
         // GET: Employee/Create
@@ -110,31 +166,22 @@ namespace HR.Mvc.Controllers
         public IActionResult Create()
         {
             // Departments
-            const string sqlDeps = @"SELECT * FROM Departments";
-            ViewBag.Departments = _context.Departments
-                .FromSqlRaw(sqlDeps)
-                .AsEnumerable()
-                .Select(d => new { d.DepartmentId, d.DepartmentName })
-                .ToList();
+            const string sqlDeps = @"SELECT DepartmentID, DepartmentName FROM Departments";
+            ViewBag.Departments = _context.Database.SqlQueryRaw<DepartmentDTO>(sqlDeps).ToList();
 
             // Jobs
-            const string sqlJobs = @"SELECT * FROM Jobs";
-            ViewBag.Jobs = _context.Jobs
-                .FromSqlRaw(sqlJobs)
-                .AsEnumerable()
-                .Select(j => new { j.JobId, j.JobTitle })
-                .ToList();
+            const string sqlJobs = @"SELECT JobID, JobTitle FROM Jobs";
+            ViewBag.Jobs = _context.Database.SqlQueryRaw<JobDTO>(sqlJobs).ToList();
 
             // Managers: HR veya Admin rolüne sahip kullanıcılar
             const string sqlManagers = @"
-                SELECT u.*
+                SELECT u.UserID, u.Username
                 FROM Users u
                 JOIN UserRoles ur ON u.UserID = ur.UserID
                 JOIN Roles r ON ur.RoleID = r.RoleID
                 WHERE r.RoleName IN ('HR', 'Admin')";
 
-            var managers = _context.Users
-                .FromSqlRaw(sqlManagers)
+            var managers = _context.Database.SqlQueryRaw<UserDTO>(sqlManagers)
                 .AsEnumerable()
                 .DistinctBy(u => u.UserId) // aynı kullanıcıya birden fazla rol gelirse
                 .Select(u => new SelectListItem
@@ -317,31 +364,22 @@ namespace HR.Mvc.Controllers
         private void ReloadDropdowns()
         {
             // Departments
-            const string sqlDeps = @"SELECT * FROM Departments";
-            ViewBag.Departments = _context.Departments
-                .FromSqlRaw(sqlDeps)
-                .AsEnumerable()
-                .Select(d => new { d.DepartmentId, d.DepartmentName })
-                .ToList();
+            const string sqlDeps = @"SELECT DepartmentID, DepartmentName FROM Departments";
+            ViewBag.Departments = _context.Database.SqlQueryRaw<DepartmentDTO>(sqlDeps).ToList();
 
             // Jobs
-            const string sqlJobs = @"SELECT * FROM Jobs";
-            ViewBag.Jobs = _context.Jobs
-                .FromSqlRaw(sqlJobs)
-                .AsEnumerable()
-                .Select(j => new { j.JobId, j.JobTitle })
-                .ToList();
+            const string sqlJobs = @"SELECT JobID, JobTitle FROM Jobs";
+            ViewBag.Jobs = _context.Database.SqlQueryRaw<JobDTO>(sqlJobs).ToList();
 
             // Managers
             const string sqlManagers = @"
-                SELECT u.*
+                SELECT u.UserID, u.Username
                 FROM Users u
                 JOIN UserRoles ur ON u.UserID = ur.UserID
                 JOIN Roles r ON ur.RoleID = r.RoleID
                 WHERE r.RoleName IN ('HR', 'Admin')";
 
-            ViewBag.Managers = _context.Users
-                .FromSqlRaw(sqlManagers)
+            ViewBag.Managers = _context.Database.SqlQueryRaw<UserDTO>(sqlManagers)
                 .AsEnumerable()
                 .DistinctBy(u => u.UserId)
                 .Select(u => new SelectListItem
@@ -364,9 +402,8 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index", "HR");
             }
 
-            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-            var emp = _context.Employees
-                .FromSqlRaw(sqlEmp, id)
+            const string sqlEmp = @"SELECT EmployeeID, UserID FROM Employees WHERE EmployeeID = {0}";
+            var emp = _context.Database.SqlQueryRaw<EmployeeIdUserIdDTO>(sqlEmp, id)
                 .AsEnumerable()
                 .FirstOrDefault();
 
@@ -413,8 +450,6 @@ namespace HR.Mvc.Controllers
             const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var emp = _context.Employees
                 .FromSqlRaw(sqlEmp, id)
-                .Include(e => e.EmploymentContracts)
-                .Include(e => e.Department)
                 .AsEnumerable()
                 .FirstOrDefault();
 
@@ -429,9 +464,8 @@ namespace HR.Mvc.Controllers
 
             ViewBag.IsDepartmentManager = isDepartmentManager;
 
-            const string sqlDeps = @"SELECT * FROM Departments";
-            ViewBag.Departments = _context.Departments
-                .FromSqlRaw(sqlDeps)
+            const string sqlDeps = @"SELECT DepartmentID, DepartmentName FROM Departments";
+            ViewBag.Departments = _context.Database.SqlQueryRaw<DepartmentDTO>(sqlDeps)
                 .AsEnumerable()
                 .Select(d => new SelectListItem
                 {
@@ -441,9 +475,8 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
-            const string sqlJobs = @"SELECT * FROM Jobs";
-            ViewBag.Jobs = _context.Jobs
-                .FromSqlRaw(sqlJobs)
+            const string sqlJobs = @"SELECT JobID, JobTitle FROM Jobs";
+            ViewBag.Jobs = _context.Database.SqlQueryRaw<JobDTO>(sqlJobs)
                 .AsEnumerable()
                 .Select(j => new SelectListItem
                 {
@@ -454,14 +487,13 @@ namespace HR.Mvc.Controllers
                 .ToList();
 
             const string sqlManagers = @"
-                SELECT u.*
+                SELECT u.UserID, u.Username
                 FROM Users u
                 JOIN UserRoles ur ON u.UserID = ur.UserID
                 JOIN Roles r ON ur.RoleID = r.RoleID
                 WHERE r.RoleName IN ('HR', 'Admin')";
 
-            ViewBag.Managers = _context.Users
-                .FromSqlRaw(sqlManagers)
+            ViewBag.Managers = _context.Database.SqlQueryRaw<UserDTO>(sqlManagers)
                 .AsEnumerable()
                 .DistinctBy(u => u.UserId)
                 .Select(u => new SelectListItem
@@ -472,7 +504,12 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
-            var activeContract = emp.EmploymentContracts?.FirstOrDefault(c => c.IsActive);
+            const string sqlContract = @"SELECT * FROM EmploymentContracts WHERE EmployeeID = {0} AND IsActive = 1";
+            var activeContract = _context.EmploymentContracts
+                .FromSqlRaw(sqlContract, id)
+                .AsEnumerable()
+                .FirstOrDefault();
+            
             ViewBag.ActiveContract = activeContract;
 
             return View(emp);
@@ -520,11 +557,14 @@ namespace HR.Mvc.Controllers
                 const string sqlEmpReload = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
                 var empReload = _context.Employees
                     .FromSqlRaw(sqlEmpReload, model.EmployeeId)
-                    .Include(e => e.EmploymentContracts)
                     .AsEnumerable()
                     .FirstOrDefault();
 
-                ViewBag.ActiveContract = empReload?.EmploymentContracts?.FirstOrDefault(c => c.IsActive);
+                const string sqlContractReload = @"SELECT * FROM EmploymentContracts WHERE EmployeeID = {0} AND IsActive = 1";
+                ViewBag.ActiveContract = _context.EmploymentContracts
+                    .FromSqlRaw(sqlContractReload, model.EmployeeId)
+                    .AsEnumerable()
+                    .FirstOrDefault();
 
                 return View(model);
             }
@@ -532,7 +572,6 @@ namespace HR.Mvc.Controllers
             const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
             var employee = _context.Employees
                 .FromSqlRaw(sqlEmp, model.EmployeeId)
-                .Include(e => e.EmploymentContracts)
                 .AsEnumerable()
                 .FirstOrDefault();
 
@@ -546,36 +585,35 @@ namespace HR.Mvc.Controllers
                 .FirstOrDefault() > 0;
 
             // Çalışan bilgilerini güncelle
-            employee.FirstName = model.FirstName;
-            employee.LastName = model.LastName;
-            employee.Email = model.Email;
-            employee.PhoneNumber = model.PhoneNumber;
-            employee.IdentityNumber = model.IdentityNumber;
-            employee.HireDate = model.HireDate;
-            employee.JobId = model.JobId;
-            employee.ManagerId = model.ManagerId;
-            employee.IsActive = model.IsActive;
-
+            int deptId = employee.DepartmentId;
             if (!isDepartmentManager)
             {
-                employee.DepartmentId = model.DepartmentId;
+                deptId = model.DepartmentId;
             }
+
+            const string sqlUpdateEmp = @"
+                UPDATE Employees SET 
+                    FirstName = {0}, LastName = {1}, Email = {2}, PhoneNumber = {3}, 
+                    IdentityNumber = {4}, HireDate = {5}, JobID = {6}, ManagerID = {7}, 
+                    IsActive = {8}, DepartmentID = {9}
+                WHERE EmployeeID = {10}";
+
+            _context.Database.ExecuteSqlRaw(sqlUpdateEmp, 
+                model.FirstName, model.LastName, model.Email, model.PhoneNumber, 
+                model.IdentityNumber, model.HireDate, model.JobId, model.ManagerId, 
+                model.IsActive, deptId, model.EmployeeId);
 
             // Sözleşme güncellemesi
             if (updateContract && contractId.HasValue && contractStartDate.HasValue && contractSalary.HasValue)
             {
-                var contract = employee.EmploymentContracts.FirstOrDefault(c => c.ContractId == contractId.Value);
-
-                if (contract != null)
-                {
-                    contract.StartDate = contractStartDate.Value;
-                    contract.EndDate = contractEndDate;
-                    contract.Salary = contractSalary.Value;
-                    contract.ContractType = contractType ?? "Belirsiz Süreli";
-                }
+                const string sqlUpdateContract = @"
+                    UPDATE EmploymentContracts SET
+                        StartDate = {0}, EndDate = {1}, Salary = {2}, ContractType = {3}
+                    WHERE ContractId = {4}";
+                
+                _context.Database.ExecuteSqlRaw(sqlUpdateContract,
+                    contractStartDate.Value, contractEndDate, contractSalary.Value, contractType ?? "Belirsiz Süreli", contractId.Value);
             }
-
-            _context.SaveChanges();
 
             TempData["SuccessMessage"] = "Çalışan ve sözleşme bilgileri başarıyla güncellendi!";
             return RedirectToAction("Index", "HR");
@@ -583,9 +621,8 @@ namespace HR.Mvc.Controllers
 
         private void ReloadDropdownsForEdit(Employee model)
         {
-            const string sqlDeps = @"SELECT * FROM Departments";
-            ViewBag.Departments = _context.Departments
-                .FromSqlRaw(sqlDeps)
+            const string sqlDeps = @"SELECT DepartmentID, DepartmentName FROM Departments";
+            ViewBag.Departments = _context.Database.SqlQueryRaw<DepartmentDTO>(sqlDeps)
                 .AsEnumerable()
                 .Select(d => new SelectListItem
                 {
@@ -595,9 +632,8 @@ namespace HR.Mvc.Controllers
                 })
                 .ToList();
 
-            const string sqlJobs = @"SELECT * FROM Jobs";
-            ViewBag.Jobs = _context.Jobs
-                .FromSqlRaw(sqlJobs)
+            const string sqlJobs = @"SELECT JobID, JobTitle FROM Jobs";
+            ViewBag.Jobs = _context.Database.SqlQueryRaw<JobDTO>(sqlJobs)
                 .AsEnumerable()
                 .Select(j => new SelectListItem
                 {
@@ -608,14 +644,13 @@ namespace HR.Mvc.Controllers
                 .ToList();
 
             const string sqlManagers = @"
-                SELECT u.*
+                SELECT u.UserID, u.Username
                 FROM Users u
                 JOIN UserRoles ur ON u.UserID = ur.UserID
                 JOIN Roles r ON ur.RoleID = r.RoleID
                 WHERE r.RoleName IN ('HR', 'Admin')";
 
-            ViewBag.Managers = _context.Users
-                .FromSqlRaw(sqlManagers)
+            ViewBag.Managers = _context.Database.SqlQueryRaw<UserDTO>(sqlManagers)
                 .AsEnumerable()
                 .DistinctBy(u => u.UserId)
                 .Select(u => new SelectListItem
@@ -641,19 +676,39 @@ namespace HR.Mvc.Controllers
                 return RedirectToAction("Index");
             }
 
-            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-            var emp = _context.Employees
-                .FromSqlRaw(sqlEmp, id)
-                .Include(e => e.Department)
-                .Include(e => e.Job)
-                .Include(e => e.Attendances)
+            const string sqlInfo = @"
+                SELECT e.EmployeeID, e.FirstName, e.LastName, j.JobTitle, d.DepartmentName
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
+                WHERE e.EmployeeID = {0}";
+
+            var basicInfo = _context.Database.SqlQueryRaw<EmployeeBasicInfoDTO>(sqlInfo, id)
                 .AsEnumerable()
                 .FirstOrDefault();
 
-            if (emp == null)
+            if (basicInfo == null)
                 return NotFound();
 
-            return View(emp);
+            var model = new EmployeeAttendanceViewModel
+            {
+                EmployeeId = basicInfo.EmployeeId,
+                FirstName = basicInfo.FirstName,
+                LastName = basicInfo.LastName,
+                JobTitle = basicInfo.JobTitle,
+                DepartmentName = basicInfo.DepartmentName
+            };
+
+            const string sqlAttendances = @"
+                SELECT AttendanceID, Date, CheckInTime, CheckOutTime
+                FROM Attendances
+                WHERE EmployeeID = {0}
+                ORDER BY Date DESC";
+            
+            var attendanceDtos = _context.Database.SqlQueryRaw<AttendanceViewModel>(sqlAttendances, id).ToList();
+            model.Attendances = attendanceDtos;
+
+            return View(model);
         }
 
         // Giriş kaydı ekleme
@@ -741,45 +796,136 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Leaves(int id)
         {
-            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-            var emp = _context.Employees
-                .FromSqlRaw(sqlEmp, id)
-                .Include(e => e.LeaveRequests)
-                    .ThenInclude(l => l.LeaveType)
+            const string sqlInfo = @"
+                SELECT e.EmployeeID, e.FirstName, e.LastName, j.JobTitle, d.DepartmentName
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
+                WHERE e.EmployeeID = {0}";
+
+            var basicInfo = _context.Database.SqlQueryRaw<EmployeeBasicInfoDTO>(sqlInfo, id)
                 .AsEnumerable()
                 .FirstOrDefault();
 
-            if (emp == null) return NotFound();
+            if (basicInfo == null) return NotFound();
 
-            return View(emp);
+            var model = new EmployeeLeavesViewModel
+            {
+                EmployeeId = basicInfo.EmployeeId,
+                FirstName = basicInfo.FirstName,
+                LastName = basicInfo.LastName,
+                JobTitle = basicInfo.JobTitle,
+                DepartmentName = basicInfo.DepartmentName
+            };
+
+            const string sqlLeaves = @"
+                SELECT 
+                    lr.RequestId, 
+                    lr.EmployeeId, 
+                    e.FirstName AS EmployeeFirstName,
+                    e.LastName AS EmployeeLastName,
+                    d.DepartmentName,
+                    j.JobTitle,
+                    e.Email,
+                    lt.TypeName AS LeaveTypeName, 
+                    lr.StartDate, 
+                    lr.EndDate, 
+                    lr.Status, 
+                    lr.Reason,
+                    lr.ApprovedByUserId,
+                    u.Username AS ApprovedByUserName
+                FROM LeaveRequests lr
+                INNER JOIN Employees e ON lr.EmployeeId = e.EmployeeId
+                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
+                LEFT JOIN Jobs j ON e.JobId = j.JobId
+                LEFT JOIN LeaveTypes lt ON lr.LeaveTypeID = lt.LeaveTypeID
+                LEFT JOIN Users u ON lr.ApprovedByUserId = u.UserId
+                WHERE lr.EmployeeID = {0}
+                ORDER BY lr.StartDate DESC";
+
+            model.LeaveRequests = _context.Database.SqlQueryRaw<LeaveRequestViewModel>(sqlLeaves, id).ToList();
+
+            return View(model);
         }
 
         public IActionResult Performance(int id)
         {
-            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-            var emp = _context.Employees
-                .FromSqlRaw(sqlEmp, id)
-                .Include(e => e.PerformanceReviewEmployees)
+            const string sqlInfo = @"
+                SELECT e.EmployeeID, e.FirstName, e.LastName, j.JobTitle, d.DepartmentName
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
+                WHERE e.EmployeeID = {0}";
+
+            var basicInfo = _context.Database.SqlQueryRaw<EmployeeBasicInfoDTO>(sqlInfo, id)
                 .AsEnumerable()
                 .FirstOrDefault();
 
-            if (emp == null) return NotFound();
+            if (basicInfo == null) return NotFound();
 
-            return View(emp);
+            var model = new EmployeePerformanceViewModel
+            {
+                EmployeeId = basicInfo.EmployeeId,
+                FirstName = basicInfo.FirstName,
+                LastName = basicInfo.LastName,
+                JobTitle = basicInfo.JobTitle,
+                DepartmentName = basicInfo.DepartmentName
+            };
+
+            const string sqlReviews = @"
+                SELECT pr.ReviewId, pr.ReviewDate, pr.Score, pr.Notes, 
+                       r.FirstName + ' ' + r.LastName AS ReviewerName
+                FROM PerformanceReviews pr
+                LEFT JOIN Employees r ON pr.ReviewerID = r.EmployeeID
+                WHERE pr.EmployeeID = {0}
+                ORDER BY pr.ReviewDate DESC";
+
+            model.Reviews = _context.Database.SqlQueryRaw<PerformanceReviewViewModel>(sqlReviews, id).ToList();
+
+            return View(model);
         }
 
         public IActionResult Documents(int id)
         {
-            const string sqlEmp = @"SELECT * FROM Employees WHERE EmployeeID = {0}";
-            var emp = _context.Employees
-                .FromSqlRaw(sqlEmp, id)
-                .Include(e => e.Documents)
+            const string sqlInfo = @"
+                SELECT e.EmployeeID, e.FirstName, e.LastName, j.JobTitle, d.DepartmentName
+                FROM Employees e
+                LEFT JOIN Jobs j ON e.JobID = j.JobID
+                LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
+                WHERE e.EmployeeID = {0}";
+
+            var basicInfo = _context.Database.SqlQueryRaw<EmployeeBasicInfoDTO>(sqlInfo, id)
                 .AsEnumerable()
                 .FirstOrDefault();
 
-            if (emp == null) return NotFound();
+            if (basicInfo == null) return NotFound();
 
-            return View(emp);
+            var model = new EmployeeDocumentsViewModel
+            {
+                EmployeeId = basicInfo.EmployeeId,
+                FirstName = basicInfo.FirstName,
+                LastName = basicInfo.LastName,
+                JobTitle = basicInfo.JobTitle,
+                DepartmentName = basicInfo.DepartmentName
+            };
+
+            const string sqlDocs = @"
+                SELECT 
+                    d.DocumentId, 
+                    d.Title, 
+                    d.DocumentDescription AS Description, 
+                    d.CreatedDate, 
+                    d.CurrentStatus AS Status, 
+                    c.CategoryName,
+                    d.IsActive
+                FROM Documents d
+                LEFT JOIN DocumentCategories c ON d.CategoryID = c.CategoryID
+                WHERE d.OwnerEmployeeId = {0}
+                ORDER BY d.CreatedDate DESC";
+
+            model.Documents = _context.Database.SqlQueryRaw<DocumentViewModel>(sqlDocs, id).ToList();
+
+            return View(model);
         }
     }
 }

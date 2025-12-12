@@ -1,4 +1,4 @@
-﻿@model HRDms.Data.Models.Employee
+﻿@model HR.Mvc.Models.EmployeeAttendanceViewModel
 @{
     Layout = null;
 }
@@ -15,6 +15,9 @@
             var userRole = Context.Session.GetString("UserRole");
             var isHRorAdmin = userRole == "HR" || userRole == "Admin";
             var backUrl = isHRorAdmin ? Url.Action("Index", "HR") : Url.Action("Index", "Employee");
+            
+            var today = DateTime.Today;
+            var todayAttendance = Model.Attendances?.FirstOrDefault(a => a.Date.HasValue && a.Date.Value.Date == today);
         }
 
         <div class="d-flex justify-content-between mb-3">
@@ -37,30 +40,44 @@
         <div class="card mb-3">
             <div class="card-header bg-primary text-white">
                 <h4>@Model.FirstName @Model.LastName</h4>
-                <small>@(Model.Job?.JobTitle ?? "No Position") | @(Model.Department?.DepartmentName ?? "No Department")</small>
+                <small>@(Model.JobTitle ?? "No Position") | @(Model.DepartmentName ?? "No Department")</small>
             </div>
             <div class="card-body">
                 @if (!isHRorAdmin)
                 {
-                    var today = DateOnly.FromDateTime(DateTime.Now);
-                    var todayAttendance = Model.Attendances?.FirstOrDefault(a => a.Date == today);
-
                     @if (todayAttendance == null)
                     {
                         <form asp-action="CheckIn" asp-controller="Employee" method="post">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="employeeId" value="@Model.EmployeeId" />
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-success btn-lg w-100">
                                 <i class="fas fa-sign-in-alt"></i> Check In
+                            </button>
+                        </form>
+                    }
+                    else if (todayAttendance.CheckOutTime == null)
+                    {
+                        <form asp-action="CheckOut" asp-controller="Employee" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="employeeId" value="@Model.EmployeeId" />
+                            <input type="hidden" name="attendanceId" value="@todayAttendance.AttendanceId" />
+                            <button type="submit" class="btn btn-danger btn-lg w-100">
+                                <i class="fas fa-sign-out-alt"></i> Check Out
                             </button>
                         </form>
                     }
                     else
                     {
-                        <div class="alert alert-success">
-                            <i class="fas fa-check-circle"></i> You checked in today at: <strong>@todayAttendance.CheckInTime?.ToString("HH:mm")</strong>
+                        <div class="alert alert-success text-center">
+                            <i class="fas fa-check-circle"></i> You have completed your attendance for today.
                         </div>
                     }
+                }
+                else
+                {
+                     <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle"></i> Viewing as HR/Admin
+                    </div>
                 }
             </div>
         </div>
@@ -130,17 +147,13 @@
                                 <th>Check Out</th>
                                 <th>Duration</th>
                                 <th>Status</th>
-                                @if (!isHRorAdmin)
-                                {
-                                    <th>Action</th>
-                                }
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var attendance in Model.Attendances.OrderByDescending(a => a.Date))
                             {
                                 <tr>
-                                    <td>@(attendance.Date?.ToString("dd/MM/yyyy") ?? "N/A")</td>
+                                    <td>@(attendance.Date?.ToString("dd/MM/yyyy") ?? "-")</td>
                                     <td>
                                         @if (attendance.CheckInTime != null)
                                         {
@@ -182,22 +195,6 @@
                                             <span class="badge bg-warning">Ongoing</span>
                                         }
                                     </td>
-                                    @if (!isHRorAdmin)
-                                    {
-                                        <td>
-                                            @if (attendance.CheckOutTime == null && attendance.Date == DateOnly.FromDateTime(DateTime.Now))
-                                            {
-                                                <form asp-action="CheckOut" asp-controller="Employee" method="post" style="display: inline;">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="attendanceId" value="@attendance.AttendanceId" />
-                                                    <input type="hidden" name="employeeId" value="@Model.EmployeeId" />
-                                                    <button type="submit" class="btn btn-sm btn-info" onclick="return confirm('Are you sure you want to check out?')">
-                                                        <i class="fas fa-sign-out-alt"></i> Check Out
-                                                    </button>
-                                                </form>
-                                            }
-                                        </td>
-                                    }
                                 </tr>
                             }
                         </tbody>
