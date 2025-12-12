@@ -1,9 +1,9 @@
-﻿@model HRDms.Data.Models.Employee
+﻿@model HR.Mvc.Models.EmployeePerformanceViewModel
 @{
     Layout = null;
-    var reviews = Model.PerformanceReviewEmployees?.OrderByDescending(r => r.ReviewDate).ToList() ?? new List<HRDms.Data.Models.PerformanceReview>();
+    var reviews = Model.Reviews;
     var totalReviews = reviews.Count;
-    var avgScore = reviews.Any() ? reviews.Average(r => r.Score) : 0;
+    var avgScore = reviews.Any() ? (reviews.Average(r => r.Score) ?? 0) : 0;
     var lastReview = reviews.FirstOrDefault();
     var bestScore = reviews.Any() ? reviews.Max(r => r.Score) : 0;
 }
@@ -19,7 +19,7 @@
         <div class="d-flex justify-content-between mb-3">
             <div>
                 <h2><i class="fas fa-chart-line"></i> Performance Reviews</h2>
-                <p class="text-muted">@Model.FirstName @Model.LastName - @(Model.Job?.JobTitle ?? "No Position")</p>
+                <p class="text-muted">@Model.FirstName @Model.LastName - @(Model.JobTitle ?? "No Position")</p>
             </div>
             <div>
                 <a href="@Url.Action("Create", new { employeeId = Model.EmployeeId, returnUrl = ViewBag.ReturnUrl })" class="btn btn-primary me-2">
@@ -93,9 +93,9 @@
                                         @review.Score%
                                     </div>
                                 </div>
-                                @if (review.Reviewer != null)
+                                @if (!string.IsNullOrEmpty(review.ReviewerName))
                                 {
-                                    <p><strong>Reviewer:</strong> @review.Reviewer.FirstName @review.Reviewer.LastName</p>
+                                    <p><strong>Reviewer:</strong> @review.ReviewerName</p>
                                 }
                                 @if (!string.IsNullOrWhiteSpace(review.Notes))
                                 {

@@ -873,7 +873,7 @@ namespace HR.Mvc.Controllers
             };
 
             const string sqlReviews = @"
-                SELECT pr.ReviewId, pr.ReviewDate, pr.Score, pr.Notes, 
+                SELECT pr.ReviewId, pr.EmployeeId, pr.ReviewDate, pr.Score, pr.Notes, 
                        r.FirstName + ' ' + r.LastName AS ReviewerName
                 FROM PerformanceReviews pr
                 LEFT JOIN Employees r ON pr.ReviewerID = r.EmployeeID

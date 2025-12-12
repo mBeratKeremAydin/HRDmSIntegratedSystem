@@ -16,10 +16,19 @@ namespace HR.Mvc.Models
     public class PerformanceReviewViewModel
     {
         public int ReviewId { get; set; }
+        public int EmployeeId { get; set; }
         public DateOnly? ReviewDate { get; set; }
         public int? Score { get; set; }
         public string? Notes { get; set; }
         public string? ReviewerName { get; set; }
+    }
+
+    public class PerformanceReviewCreateViewModel
+    {
+        public int EmployeeId { get; set; }
+        public DateOnly ReviewDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+        public int Score { get; set; }
+        public string? Notes { get; set; }
     }
 
     public class EmployeeDocumentsViewModel : EmployeeBasicInfoDTO
