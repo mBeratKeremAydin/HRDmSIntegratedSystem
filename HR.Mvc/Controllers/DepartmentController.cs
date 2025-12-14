@@ -312,7 +312,7 @@ namespace HR.Mvc.Controllers
                 sqlInsertDep,
                 model.DepartmentName,
                 model.LocationId,
-                DBNull.Value); // ManagerID otomatik NULL
+                null); // ManagerID otomatik NULL model.ManagerId=null
 
             TempData["SuccessMessage"] = "Departman başarıyla eklendi!";
             return RedirectToAction("Index");

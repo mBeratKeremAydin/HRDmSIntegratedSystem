@@ -124,10 +124,10 @@ namespace HR.Mvc.Controllers
             if (roles.Contains("HR"))
                 return "HR";
             
-            if (roles.Contains("Department Manager") || roles.Contains("Employee"))
+            if (roles.Contains("Department Manager"))
                 return "Department Manager";
             
-            if (roles.Contains("Employee") && !roles.Contains("Department Manager"))
+            if (roles.Contains("Employee"))
                 return "Employee";
 
             // Varsayılan
