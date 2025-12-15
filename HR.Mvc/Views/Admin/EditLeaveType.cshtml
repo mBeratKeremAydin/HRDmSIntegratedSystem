@@ -12,7 +12,7 @@
     <div class="container">
         <div class="card">
             <div class="card-header bg-warning">
-                <h3>İzin Türü Düzenle</h3>
+                <h3>Edit Leave Type</h3>
             </div>
             <div class="card-body">
                 <form method="post">
@@ -20,17 +20,17 @@
                     @Html.HiddenFor(m => m.LeaveTypeId)
 
                     <div class="mb-3">
-                        <label class="form-label">İzin Türü Adı *</label>
+                        <label class="form-label">Leave Type Name *</label>
                         <input asp-for="TypeName" class="form-control" required />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Yıllık İzin Hakkı (Gün)</label>
+                        <label class="form-label">Year of Relationship Rights (Days)</label>
                         <input asp-for="DaysAllowed" type="number" class="form-control" />
-                        <small class="text-muted">Sınırsız izin için boş bırakın</small>
+                        <small class="text-muted">Leave it blank for unlimited permissions</small>
                     </div>
 
-                    <button type="submit" class="btn btn-warning">Güncelle</button>
+                    <button type="submit" class="btn btn-warning">Update</button>
                     <a href="@Url.Action("LeaveTypes")" class="btn btn-secondary">İptal</a>
                 </form>
             </div>

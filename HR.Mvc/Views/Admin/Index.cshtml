@@ -2,10 +2,10 @@
     Layout = null;
 }
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Admin Paneli</title>
+    <title>Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -13,78 +13,78 @@
     <div class="container mt-5">
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
-                <h3><i class="fas fa-crown"></i> Admin Yönetim Paneli</h3>
+                <h3><i class="fas fa-crown"></i> Admin Dashboard</h3>
             </div>
             <div class="card-body">
                 <div class="row g-4">
-                    <!-- HR Çalışanları -->
+                    <!-- HR Employees -->
                     <div class="col-md-4">
                         <div class="card text-center h-100">
                             <div class="card-body">
                                 <i class="fas fa-user-tie fa-3x text-primary mb-3"></i>
-                                <h5>HR Çalışanları</h5>
-                                <p class="text-muted">@ViewBag.TotalHREmployees Kişi</p>
-                                <a href="@Url.Action("HREmployees")" class="btn btn-primary">Yönet</a>
+                                <h5>HR Employees</h5>
+                                <p class="text-muted">@ViewBag.TotalHREmployees People</p>
+                                <a href="@Url.Action("HREmployees")" class="btn btn-primary">Manage</a>
                             </div>
                         </div>
                     </div>
 
-                    <!-- İş Pozisyonları -->
+                    <!-- Jobs -->
                     <div class="col-md-4">
                         <div class="card text-center h-100">
                             <div class="card-body">
                                 <i class="fas fa-briefcase fa-3x text-success mb-3"></i>
-                                <h5>İş Pozisyonları</h5>
-                                <p class="text-muted">@ViewBag.TotalJobs Pozisyon</p>
-                                <a href="@Url.Action("Jobs")" class="btn btn-success">Yönet</a>
+                                <h5>Jobs</h5>
+                                <p class="text-muted">@ViewBag.TotalJobs Positions</p>
+                                <a href="@Url.Action("Jobs")" class="btn btn-success">Manage</a>
                             </div>
                         </div>
                     </div>
 
-                    <!-- İzin Türleri -->
+                    <!-- Leave Types -->
                     <div class="col-md-4">
                         <div class="card text-center h-100">
                             <div class="card-body">
                                 <i class="fas fa-calendar-alt fa-3x text-warning mb-3"></i>
-                                <h5>İzin Türleri</h5>
-                                <p class="text-muted">@ViewBag.TotalLeaveTypes Tür</p>
-                                <a href="@Url.Action("LeaveTypes")" class="btn btn-warning">Yönet</a>
+                                <h5>Leave Types</h5>
+                                <p class="text-muted">@ViewBag.TotalLeaveTypes Types</p>
+                                <a href="@Url.Action("LeaveTypes")" class="btn btn-warning">Manage</a>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Lokasyonlar -->
+                    <!-- Locations -->
                     <div class="col-md-4">
                         <div class="card text-center h-100">
                             <div class="card-body">
                                 <i class="fas fa-map-marker-alt fa-3x text-info mb-3"></i>
-                                <h5>Lokasyonlar</h5>
-                                <p class="text-muted">@ViewBag.TotalLocations Lokasyon</p>
-                                <a href="@Url.Action("Locations")" class="btn btn-info">Yönet</a>
+                                <h5>Locations</h5>
+                                <p class="text-muted">@ViewBag.TotalLocations Locations</p>
+                                <a href="@Url.Action("Locations")" class="btn btn-info">Manage</a>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Roller -->
+                    <!-- Roles -->
                     <div class="col-md-4">
                         <div class="card text-center h-100">
                             <div class="card-body">
                                 <i class="fas fa-user-shield fa-3x text-danger mb-3"></i>
-                                <h5>Roller</h5>
-                                <p class="text-muted">@ViewBag.TotalRoles Rol</p>
-                                <a href="@Url.Action("Roles")" class="btn btn-danger">Görüntüle</a>
+                                <h5>Roles</h5>
+                                <p class="text-muted">@ViewBag.TotalRoles Roles</p>
+                                <a href="@Url.Action("Roles")" class="btn btn-danger">View</a>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Çıkış -->
+                    <!-- Logout -->
                     <div class="col-md-4">
                         <div class="card text-center h-100">
                             <div class="card-body">
                                 <i class="fas fa-sign-out-alt fa-3x text-secondary mb-3"></i>
-                                <h5>Çıkış</h5>
-                                <p class="text-muted">Oturumu Kapat</p>
-                                <a href="@Url.Action("Logout", "Login")" class="btn btn-secondary">Çıkış Yap</a>
+                                <h5>Logout</h5>
+                                <p class="text-muted">Sign out of your session</p>
+                                <a href="@Url.Action("Logout", "Login")" class="btn btn-secondary">Logout</a>
                             </div>
                         </div>
                     </div>

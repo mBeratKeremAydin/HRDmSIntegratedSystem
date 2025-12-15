@@ -3,39 +3,40 @@
     Layout = null;
 }
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Yeni İş Pozisyonu</title>
+    <meta charset="utf-8" />
+    <title>New Job Position</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light p-4">
     <div class="container">
         <div class="card">
             <div class="card-header bg-success text-white">
-                <h3>Yeni İş Pozisyonu Ekle</h3>
+                <h3>Add New Job Position</h3>
             </div>
             <div class="card-body">
                 <form method="post">
                     @Html.AntiForgeryToken()
 
                     <div class="mb-3">
-                        <label class="form-label">Pozisyon Adı *</label>
+                        <label class="form-label">Position Title *</label>
                         <input asp-for="JobTitle" class="form-control" required />
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Minimum Maaş</label>
+                            <label class="form-label">Minimum Salary</label>
                             <input asp-for="MinSalary" type="number" step="0.01" class="form-control" />
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Maximum Maaş</label>
+                            <label class="form-label">Maximum Salary</label>
                             <input asp-for="MaxSalary" type="number" step="0.01" class="form-control" />
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-success">Kaydet</button>
-                    <a href="@Url.Action("Jobs")" class="btn btn-secondary">İptal</a>
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <a href="@Url.Action("Jobs")" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>
         </div>

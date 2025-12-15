@@ -4,18 +4,18 @@
 }
 
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Admin - Çalışan Yönetimi</title>
+    <title>Admin - Employee Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>Çalışan Yönetimi</h2>
+            <h2>Employee Management</h2>
             <a href="@Url.Action("Index", "Admin")" class="btn btn-outline-secondary btn-sm">
-                <i class="fas fa-arrow-left"></i> Admin Paneline Dön
+                <i class="fas fa-arrow-left"></i> Back to Admin Panel
             </a>
         </div>
 
@@ -23,11 +23,11 @@
             <thead class="table-dark">
                 <tr>
                     <th>ID</th>
-                    <th>Ad Soyad</th>
-                    <th>Departman</th>
-                    <th>Pozisyon</th>
-                    <th>Yönetici</th>
-                    <th>Aktif mi?</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Position</th>
+                    <th>Manager</th>
+                    <th>Active?</th>
                 </tr>
             </thead>
             <tbody>
@@ -42,11 +42,11 @@
                         <td>
                             @if (e.IsActive)
                             {
-                                <span class="badge bg-success">Aktif</span>
+                                <span class="badge bg-success">Active</span>
                             }
                             else
                             {
-                                <span class="badge bg-secondary">Pasif</span>
+                                <span class="badge bg-secondary">Inactive</span>
                             }
                         </td>
                     </tr>
