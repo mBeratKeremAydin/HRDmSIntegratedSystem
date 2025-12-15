@@ -223,6 +223,8 @@ namespace HR.Mvc.Controllers
                 .AsEnumerable()
                 .FirstOrDefault();
 
+            
+
             try
             {
                 // ZORUNLU: User oluşturulmalı
@@ -314,6 +316,8 @@ namespace HR.Mvc.Controllers
                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10});
                     SELECT CAST(SCOPE_IDENTITY() AS int);";
 
+                var mgrUserId = HttpContext.Session.GetInt32("UserId");
+
                 int newEmployeeId = _context.Database
                     .SqlQueryRaw<int>(
                         sqlInsertEmp,
@@ -325,7 +329,7 @@ namespace HR.Mvc.Controllers
                         employee.HireDate,
                         employee.DepartmentId,
                         employee.JobId,
-                        employee.ManagerId,
+                        mgrUserId,
                         employee.UserId,
                         employee.IsActive)
                     .AsEnumerable()
