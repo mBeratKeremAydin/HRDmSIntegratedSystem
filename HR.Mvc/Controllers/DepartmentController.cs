@@ -94,15 +94,8 @@ namespace HR.Mvc.Controllers
             var isHRorAdmin = userRole == "HR" || userRole == "Admin";
             ViewBag.CanChangeManager = isHRorAdmin;
 
-            if (isHRorAdmin)
+            if (isHRorAdmin) // sadece hr ve admin editleyebilir
             {
-                // SADECE BU DEPARTMANA AİT ÇALIŞANLAR (SQL) - Veya tüm çalışanlar? Orijinal kodda sadece departman çalışanları vardı ama mantıken tüm çalışanlar yönetici olabilir.
-                // Orijinal koda sadık kalalım: "SELECT * FROM Employees WHERE DepartmentID = {0} AND IsActive = 1"
-                // Ancak yönetici atarken genellikle tüm çalışanlardan seçilir. Kullanıcı isteği "sql sorgularını yapalım" olduğu için mantığı iyileştirebiliriz ama risk almayalım.
-                // Orijinal kodda Edit GET kısmında: "SELECT * FROM Employees WHERE DepartmentID = {0} AND IsActive = 1" vardı.
-                // Ama Create kısmında "SELECT * FROM Employees" vardı.
-                // Edit'te yönetici değiştirmek isterse, departman dışından birini atamak isteyebilir.
-                // Ben burada tüm aktif çalışanları getireceğim, daha mantıklı.
                 
                 const string sqlEmps = @"
                     SELECT EmployeeID, FirstName + ' ' + LastName AS FullName 
@@ -279,11 +272,6 @@ namespace HR.Mvc.Controllers
             var locations = _context.Database.SqlQueryRaw<LocationDTO>(sqlLoc).ToList();
             ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName");
 
-            // Yönetici seçimi kaldırıldı, otomatik NULL olacak.
-            // const string sqlEmps = @"SELECT EmployeeID, FirstName + ' ' + LastName AS FullName FROM Employees WHERE IsActive = 1";
-            // var emps = _context.Database.SqlQueryRaw<EmployeeSelectDTO>(sqlEmps).ToList();
-            // ViewBag.Managers = new SelectList(emps, "EmployeeId", "FullName");
-
             return View();
         }
 
@@ -297,10 +285,6 @@ namespace HR.Mvc.Controllers
                 var locations = _context.Database.SqlQueryRaw<LocationDTO>(sqlLoc).ToList();
                 ViewBag.Locations = new SelectList(locations, "LocationId", "LocationName", model.LocationId);
 
-                // const string sqlEmps = @"SELECT EmployeeID, FirstName + ' ' + LastName AS FullName FROM Employees WHERE IsActive = 1";
-                // var emps = _context.Database.SqlQueryRaw<EmployeeSelectDTO>(sqlEmps).ToList();
-                // ViewBag.Managers = new SelectList(emps, "EmployeeId", "FullName", model.ManagerId);
-
                 return View(model);
             }
 
@@ -312,7 +296,7 @@ namespace HR.Mvc.Controllers
                 sqlInsertDep,
                 model.DepartmentName,
                 model.LocationId,
-                null); // ManagerID otomatik NULL model.ManagerId=null
+                null); // ManagerID otomatik NULL 
 
             TempData["SuccessMessage"] = "Departman başarıyla eklendi!";
             return RedirectToAction("Index");
@@ -342,11 +326,6 @@ namespace HR.Mvc.Controllers
             if (department == null)
                 return NotFound();
 
-            // DepartmentManager ise sadece kendi departmanının çalışanlarını görebilir
-            // Not: ManagerName string olarak geliyor, ID kontrolü için tekrar sorgu veya mantık gerekebilir.
-            // Ancak burada basitlik adına, eğer rol DepManager ise ve session'daki ID, departmanın ManagerID'si değilse engellemeliyiz.
-            // Bunun için departman sorgusuna ManagerID de eklemeliyim veya ayrı kontrol etmeliyim.
-            // DepartmentDetailViewModel'e ManagerId eklemedim, o yüzden ayrı bir kontrol yapayım.
             
             if (userRole == "Department Manager" || userRole == "DepManager")
             {

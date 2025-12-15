@@ -19,6 +19,7 @@ namespace HR.Mvc.Controllers
 
         public IActionResult Index(string? status = null, int? employeeId = null)
         {
+            //LeaveReq infos
             var sql = @"
                 SELECT 
                     lr.RequestId,

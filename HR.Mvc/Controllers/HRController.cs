@@ -28,7 +28,7 @@ namespace HR.Mvc.Controllers
                 .ThenBy(e => e.LastName)
                 .ToList();
 
-            // Dashboard statistics (iş mantığı aynı, hesaplama memory’de)
+            // Dashboard statistics 
             ViewBag.TotalEmployees = emp.Count;
 
             // TotalDepartments – SQL
