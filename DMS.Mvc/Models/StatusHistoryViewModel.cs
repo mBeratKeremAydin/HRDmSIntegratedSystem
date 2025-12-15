@@ -3,7 +3,7 @@
     public class StatusHistoryViewModel
     {
         public string Status { get; set; }
-        public string ChangedByName { get; set; } // Değiştiren kullanıcının adı
+        public string ChangedByName { get; set; } 
         public DateTime ChangeDate { get; set; }
     }
 }

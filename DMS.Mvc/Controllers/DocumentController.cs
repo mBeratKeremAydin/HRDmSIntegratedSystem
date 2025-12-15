@@ -1,5 +1,5 @@
 ﻿using HRDms.Data.Context;
-using HRDms.Data.Models; // ViewModel'in olduğu yer
+using HRDms.Data.Models; 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +23,6 @@ namespace DMS.Mvc.Controllers
 
             if (userId == null) return RedirectToAction("Login", "Account");
 
-            // GELİŞMİŞ SQL SORGUSU:
             // 1. Kendi departmanımın (e.DepartmentID) belgeleri
             // 2. VEYA İzin tablosunda benim departmanıma (p.DepartmentID) yetki verilmiş belgeler
 
@@ -47,7 +46,6 @@ namespace DMS.Mvc.Controllers
                       )";
 
 
-            // --- DEĞİŞİKLİK BURADA ---
             // Eğer Admin DEĞİLSE, departman filtrelerini uygula.
             // Admin ise bu bloğu atla (yani WHERE d.IsActive=1 deyip hepsini getir).
             if (!isAdmin)
@@ -58,7 +56,6 @@ namespace DMS.Mvc.Controllers
                         (p.DepartmentID = {0} AND p.CanRead = 1)
                       )";
             }
-            // -------------------------
 
 
             if (!string.IsNullOrEmpty(searchString))
@@ -116,7 +113,6 @@ namespace DMS.Mvc.Controllers
             if (userId == null) return RedirectToAction("Login", "Account");
 
             // --- 1. DOSYA KAYDETME VE BELGE OLUŞTURMA ---
-            // (Buralar zaten çalışıyordu, aynen duruyor)
 
             // Dosyayı diske kaydet
             string uniqueFileName = Guid.NewGuid().ToString() + "_" + model.File.FileName;
@@ -148,7 +144,7 @@ namespace DMS.Mvc.Controllers
             _context.Database.ExecuteSqlRaw(sqlVer, newDocumentId, relativePath, fileExt, userId);
 
 
-            // --- 2. İZİNLERİ AYARLAMA (BURASI KRİTİK) ---
+            // --- 2. İZİNLERİ AYARLAMA ---
 
             // A) Kendi departmanına TAM YETKİ (Read=1, Edit=1)
             if (myDeptId != null)
@@ -157,7 +153,7 @@ namespace DMS.Mvc.Controllers
                 _context.Database.ExecuteSqlRaw(ownPermSql, newDocumentId, myDeptId);
             }
 
-            // B) Seçilen diğer departmanlara OKUMA YETKİSİ (Read=1, Edit=0)
+            // Seçilen diğer departmanlara OKUMA YETKİSİ (Read=1, Edit=0)
             // Model'den gelen listenin dolu olup olmadığına bakıyoruz.
             if (model.SelectedDepartmentIDs != null && model.SelectedDepartmentIDs.Count > 0)
             {
@@ -210,7 +206,7 @@ namespace DMS.Mvc.Controllers
                 document.FileName = Path.GetFileName(document.FilePath);
             }
 
-            // 2. TARİHÇE BİLGİSİNİ ÇEK (YENİ KISIM)
+            // 2. TARİHÇE BİLGİSİNİ ÇEK 
             // DocumentStatusHistory tablosunu Users tablosuyla birleştirip kullanıcı adını alıyoruz.
             string sqlHistory = @"
                 SELECT 
@@ -226,11 +222,10 @@ namespace DMS.Mvc.Controllers
                                       .SqlQueryRaw<StatusHistoryViewModel>(sqlHistory, id)
                                       .ToList();
 
-            document.History = historyList; // Listeyi modele koyduk
+            document.History = historyList; 
 
-            // ... (Önceki kodlar: document ve historyList çekildi) ...
 
-            // 3. VERSİYON GEÇMİŞİNİ ÇEK (YENİ KISIM)
+            // 3. VERSİYON GEÇMİŞİNİ ÇEK
             string sqlVersions = @"
                 SELECT 
                     v.VersionID,
@@ -271,9 +266,8 @@ namespace DMS.Mvc.Controllers
             // --- GÜVENLİK KONTROLÜ BAŞLANGIÇ ---
             if (HttpContext.Session.GetString("IsManager") != "true")
             {
-                return Unauthorized(); // Yetkin yok kardeşim!
+                return Unauthorized(); 
             }
-            // --- GÜVENLİK KONTROLÜ BİTİŞ ---
 
             int? userId = HttpContext.Session.GetInt32("UserID");
             if (userId == null) return RedirectToAction("Login", "Account");
@@ -307,8 +301,7 @@ namespace DMS.Mvc.Controllers
 
             if (string.IsNullOrEmpty(result)) return NotFound("Dosya bulunamadı.");
 
-            // 2. Fiziksel yolu oluştur (wwwroot + veritabanındaki yol)
-            // Veritabanında '/documents/...' şeklinde kayıtlı, başındaki / işaretini temizlememiz gerekebilir.
+            // Fiziksel yolu oluştur (wwwroot + veritabanındaki yol)
             string cleanPath = result.TrimStart('/');
             string physicalPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", cleanPath);
 
@@ -318,7 +311,6 @@ namespace DMS.Mvc.Controllers
             byte[] fileBytes = System.IO.File.ReadAllBytes(physicalPath);
             string fileName = Path.GetFileName(physicalPath);
 
-            // "application/octet-stream" her türlü dosyayı indirtir (PDF, DOCX, JPG fark etmez)
             return File(fileBytes, "application/octet-stream", fileName);
         }
 
@@ -334,7 +326,7 @@ namespace DMS.Mvc.Controllers
                 return Unauthorized();
             }
 
-            // 2. HARD DELETE (Gerçek Silme)
+            // 2. HARD DELETE 
             // SQL'deki ON DELETE CASCADE ayarların sayesinde,
             // Documents tablosundan sildiğimizde Versions, History vb. her şey otomatik silinecek.
 
@@ -371,7 +363,7 @@ namespace DMS.Mvc.Controllers
                 WHERE d.IsActive = 1 
                   AND d.CurrentStatus = 'Pending' 
                   AND e.DepartmentID = {0}
-                ORDER BY d.CreatedDate ASC"; // Eskiden yeniye (önce eskiler onaylansın)
+                ORDER BY d.CreatedDate ASC"; 
 
             var documents = _context.Database
                                     .SqlQueryRaw<DocumentListViewModel>(sql, deptId)
@@ -429,13 +421,12 @@ namespace DMS.Mvc.Controllers
 
             // İzin verilen uzantılar
             var allowedExtensions = new[] { ".pdf", ".docx", ".xlsx", ".jpg", ".png" };
-            var ext = Path.GetExtension(file.FileName).ToLower(); // file nesnesi Create'de model.File, diğerinde file diye geçer.
+            var ext = Path.GetExtension(file.FileName).ToLower(); 
 
             if (!allowedExtensions.Contains(ext))
             {
                 // Create metodundaysan:
                 ModelState.AddModelError("", "Geçersiz dosya formatı! Sadece PDF, Word, Excel ve Resim yükleyebilirsiniz.");
-                // Modeli tekrar doldurup return View(model); demen lazım.
 
                 // UploadNewVersion metodundaysan:
                 return BadRequest("Geçersiz dosya formatı!");
@@ -478,8 +469,8 @@ namespace DMS.Mvc.Controllers
                     userId,
                     changeNote ?? "Revize edildi"); // Not girilmediyse varsayılan yaz
 
-                // 5. DOKÜMAN DURUMUNU 'PENDING'E ÇEK (Yönetici tekrar onaylasın)
-                // Ayrıca Tarihçe tablosuna da log atalım ki "Yeni versiyon geldi" anlaşılsın.
+                // 5. DOKÜMAN DURUMUNU 'PENDING'E ÇEK 
+                // Ayrıca Tarihçe tablosuna da log at
                 string updateDocSql = "UPDATE Documents SET CurrentStatus = 'Pending' WHERE DocumentID = {0}";
                 _context.Database.ExecuteSqlRaw(updateDocSql, documentId);
 

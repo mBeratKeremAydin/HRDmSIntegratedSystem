@@ -1,5 +1,5 @@
 ﻿using HRDms.Data.Context;
-using HRDms.Data.Models; // Modellerin olduğu namespace
+using HRDms.Data.Models; 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,7 +43,7 @@ namespace DMS.Mvc.Controllers
                     HttpContext.Session.SetInt32("DepartmentID", employee.DepartmentId);
                     HttpContext.Session.SetString("Username", user.Username);
 
-                    // --- YENİ BÖLÜM: YETKİ KONTROLÜ (ADMIN ve MANAGER) ---
+                    // YETKİ KONTROLÜ (ADMIN ve MANAGER) ---
 
                     // A) Önce Rolüne Bakalım (Admin mi?)
                     string roleSql = @"
@@ -59,7 +59,7 @@ namespace DMS.Mvc.Controllers
 
                     if (roleName == "Admin")
                     {
-                        // EĞER ADMIN İSE: Hem Admin hem Manager yetkisi ver (God Mode)
+                        // EĞER ADMIN İSE: Hem Admin hem Manager yetkisi ver
                         HttpContext.Session.SetString("IsAdmin", "true");
                         HttpContext.Session.SetString("IsManager", "true");
                     }
@@ -68,7 +68,7 @@ namespace DMS.Mvc.Controllers
                         // EĞER ADMIN DEĞİLSE:
                         HttpContext.Session.SetString("IsAdmin", "false");
 
-                        // B) O zaman Departman Yöneticisi mi diye bakalım (Eski Kod)
+                        // B) O zaman Departman Yöneticisi mi diye bak
                         string managerCheckSql = "SELECT COUNT(*) as Value FROM Departments WHERE ManagerID = {0}";
 
                         int managerCount = _context.Database

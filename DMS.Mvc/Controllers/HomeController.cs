@@ -24,18 +24,13 @@ namespace DMS.Mvc.Controllers
             var model = new DashboardViewModel();
 
             // 1. SORGU: Toplam Çalýþan Sayýsý (HR Verisi)
-            // ExecuteScalar: Tek bir deðer (int) döndürür.
-            // Raw SQL ile Count alýyoruz.
-            // Not: EF Core 8'de raw count almak için Database.SqlQueryRaw primitive tiplerle biraz farklýdýr,
-            // bu yüzden en garantisi listeye çevirip Count almaktýr veya ADO.NET mantýðýdýr. 
-            // Biz burada basit olmasý için SqlQueryRaw kullanýp FirstOrDefault alacaðýz.
+            
 
             model.TotalEmployeeCount = _context.Database
                 .SqlQueryRaw<int>("SELECT COUNT(*) as Value FROM Employees WHERE IsActive = 1")
                 .AsEnumerable()
                 .FirstOrDefault();
 
-            // --- YENÝ EKLENEN SORGU: Departman Çalýþan Sayýsý ---
             // Giriþ yapan kiþinin departman ID'sini alýyoruz
             int? myDeptId = HttpContext.Session.GetInt32("DepartmentID");
 
@@ -43,7 +38,6 @@ namespace DMS.Mvc.Controllers
                 .SqlQueryRaw<int>("SELECT COUNT(*) as Value FROM Employees WHERE IsActive = 1 AND DepartmentID = {0}", myDeptId)
                 .AsEnumerable()
                 .FirstOrDefault();
-            // ---------------------------------------------------
 
             // 2. SORGU: Benim Yüklediðim Doküman Sayýsý
             model.MyDocumentCount = _context.Database

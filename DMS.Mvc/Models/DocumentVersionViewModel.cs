@@ -4,7 +4,7 @@
     {
         public int VersionID { get; set; }
         public int VersionNumber { get; set; }
-        public string FileName { get; set; } // FilePath'den türeteceğiz
+        public string FileName { get; set; } 
         public DateTime? UploadDate { get; set; }
         public string UploadedByName { get; set; }
         public string ChangeNote { get; set; }

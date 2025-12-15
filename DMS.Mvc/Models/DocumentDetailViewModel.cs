@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema; // Bu kütüphanenin ekli olduğundan emin ol
+﻿using System.ComponentModel.DataAnnotations.Schema; 
 
 namespace HRDms.Data.Models
 {
@@ -14,11 +14,10 @@ namespace HRDms.Data.Models
 
         public string FilePath { get; set; }
 
-        [NotMapped] // Dosya adını kodla dolduruyoruz, SQL'den gelmiyor.
+        [NotMapped] 
         public string FileName { get; set; }
 
-        // --- DÜZELTİLEN KISIM BURASI ---
-        [NotMapped] // EF Core burayı SQL'den doldurmaya çalışmasın. Biz aşağıda elle dolduracağız.
+        [NotMapped] 
         public List<StatusHistoryViewModel> History { get; set; } = new List<StatusHistoryViewModel>();
 
         [NotMapped]

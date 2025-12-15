@@ -111,9 +111,6 @@ namespace DMS.Mvc.Controllers
                 JOIN Documents d ON h.DocumentID = d.DocumentID
                 ORDER BY h.ChangeDate DESC";
 
-            // StatusHistoryViewModel yetmez, Title için yeni bir küçük ViewModel lazım
-            // veya dynamic kullanabiliriz. Hızlı çözüm:
-            // Mevcut StatusHistoryViewModel'e 'DocumentTitle' ekleyelim.
 
             var logs = _context.Database
                                .SqlQueryRaw<SystemLogViewModel>(sql)

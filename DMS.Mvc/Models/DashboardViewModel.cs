@@ -4,17 +4,14 @@ namespace DMS.Mvc.Models
 {
     public class DashboardViewModel
     {
-        // Kartlar için Sayaçlar
-        public int TotalEmployeeCount { get; set; } // Toplam Personel
-        public int DepartmentEmployeeCount { get; set; } // Sadece İlgili Departman
-        public int MyDocumentCount { get; set; }    // Benim Yüklediklerim
-        public int PendingApprovalCount { get; set; } // Onay Bekleyenler
+        public int TotalEmployeeCount { get; set; } 
+        public int DepartmentEmployeeCount { get; set; } 
+        public int MyDocumentCount { get; set; }    
+        public int PendingApprovalCount { get; set; } 
 
-        // Tablo için Liste
         public List<RecentDocumentViewModel> RecentDocuments { get; set; } = new List<RecentDocumentViewModel>();
     }
 
-    // Tabloda göstereceğimiz ufak veri seti
     public class RecentDocumentViewModel
     {
         public int DocumentID { get; set; }
